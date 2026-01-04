@@ -1,48 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Clinelph | Dashboard</title>
-
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b5ed7">
-
+  <title>Dashboard</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
-
 <body>
 
-<header class="app-header">
-  <div class="logo">Clinelph</div>
-  <div class="user-info">
-    <span id="userRole"></span>
-    <button onclick="logoutUser()">Logout</button>
-  </div>
+<header>
+  <img src="assets/logo.png" height="40">
+  <span id="role"></span>
+  <button onclick="logoutUser()">Logout</button>
 </header>
 
-<div class="container">
-  <main class="content">
+<h2>Dashboard</h2>
 
-    <h2>Dashboard</h2>
-    <p>Welcome to Clinelph Clinical Trial System</p>
-
-    <div style="margin-top:20px;">
-      <button onclick="goToPatients()">Patient Management</button>
-    </div>
-
-  </main>
-</div>
+<button onclick="location.href='patient.html'">
+  Patient Management
+</button>
 
 <script src="js/auth.js"></script>
-
 <script>
-  // protect dashboard
-  const user = requireAuth();
-  document.getElementById("userRole").innerText = user.role;
-
-  function goToPatients() {
-    window.location.href = "patient.html";
-  }
+const u = requireAuth();
+role.innerText = u.role;
 </script>
 
 </body>

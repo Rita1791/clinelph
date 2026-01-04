@@ -1,21 +1,3 @@
-<div id="visit-tabs">
-  <button onclick="openTab('screening')">Screening</button>
-  <button onclick="openTab('checkin')">Check-in</button>
-  <button onclick="openTab('checkout')">Check-out</button>
-</div>
-
-<div id="tab-content"></div>
-<script>
-let currentPatientId = sessionStorage.getItem("selectedPatientId");
-let currentVisitNumber;
-
-document.addEventListener("DOMContentLoaded", async () => {
-  await openDatabase();
-  const patient = await getPatient(currentPatientId);
-  currentVisitNumber = patient.currentVisit;
-  loadVisitForm(currentVisitNumber);
-});
-</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,22 +14,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 <body>
 
-<!-- HEADER -->
 <header class="app-header">
   <div class="logo">Clinelph</div>
-  <div class="study-info">
-    Study: <span id="studyCode"></span>
-  </div>
+  <div class="study-info">Patient Card</div>
   <div class="user-info">
     <span id="userRole"></span>
     <button onclick="logoutUser()">Logout</button>
   </div>
 </header>
 
-<!-- MAIN LAYOUT -->
 <div class="container">
 
-  <!-- LEFT: VISIT TIMELINE -->
+  <!-- TIMELINE -->
   <aside class="timeline">
     <h3>Visit Timeline</h3>
     <ul>
@@ -59,190 +37,173 @@ document.addEventListener("DOMContentLoaded", async () => {
     </ul>
   </aside>
 
-  <!-- RIGHT: VISIT DETAILS -->
+  <!-- CONTENT -->
   <main class="content">
 
-    <!-- PATIENT SUMMARY -->
     <section class="patient-summary">
       <h2>Patient ID: <span id="patientId"></span></h2>
       <p>Status: <span id="patientStatus"></span></p>
       <p>Current Visit: <span id="currentVisit"></span></p>
     </section>
 
-    <!-- VISIT TABS -->
     <section class="visit-tabs">
       <button onclick="showTab('screening')">Screening</button>
       <button onclick="showTab('checkin')">Check-in</button>
       <button onclick="showTab('checkout')">Check-out</button>
-      <button onclick="showTab('events')">Events</button>
       <button onclick="showTab('withdrawal')">Withdrawal</button>
     </section>
 
-    <!-- TAB CONTENT -->
     <section id="tabContent" class="tab-content"></section>
 
   </main>
 </div>
 
-<!-- SCRIPTS -->
+<!-- JS FILES (ORDER MATTERS) -->
 <script src="js/db.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/patient.js"></script>
 <script src="js/visits.js"></script>
 <script src="js/validation.js"></script>
-<script src="js/randomization.js"></script>
 
 <script>
-let selectedPatientId = sessionStorage.getItem("selectedPatientId");
+/* --------- PAGE INIT --------- */
+
+const user = requireAuth();
+document.getElementById("userRole").innerText = user.role;
+
+const selectedPatientId = sessionStorage.getItem("selectedPatientId");
+if (!selectedPatientId) {
+  alert("No patient selected");
+  window.location.href = "patient.html";
+}
+
 let activeVisitNumber = null;
 
-/* INITIAL LOAD */
 document.addEventListener("DOMContentLoaded", async () => {
   await openDatabase();
 
-  const user = getCurrentUser();
-  document.getElementById("userRole").innerText = user.role;
-
-  const study = getActiveStudy();
-  document.getElementById("studyCode").innerText = study.studyCode;
-
   const patient = await getPatient(selectedPatientId);
+  if (!patient) {
+    alert("Patient not found");
+    window.location.href = "patient.html";
+    return;
+  }
+
   document.getElementById("patientId").innerText = patient.patientId;
   document.getElementById("patientStatus").innerText = patient.status;
   document.getElementById("currentVisit").innerText = patient.currentVisit;
 
   activeVisitNumber = patient.currentVisit;
-  highlightTimeline(patient.currentVisit);
-
+  highlightTimeline(activeVisitNumber);
   openVisit(activeVisitNumber);
 });
 
-/* TIMELINE */
-function highlightTimeline(currentVisit) {
+/* --------- TIMELINE --------- */
+
+function highlightTimeline(current) {
   for (let i = 1; i <= 5; i++) {
-    document.getElementById("v" + i).className =
-      i < currentVisit ? "done" :
-      i === currentVisit ? "active" : "";
+    const el = document.getElementById("v" + i);
+    el.className = i < current ? "done" : i === current ? "active" : "";
   }
 }
 
-/* OPEN VISIT */
+/* --------- VISIT NAV --------- */
+
 async function openVisit(visitNumber) {
   activeVisitNumber = visitNumber;
   const visit = await loadVisit(selectedPatientId, visitNumber);
 
-  if (visit.visitNumber === 1) {
-    loadScreeningTab(visit);
-  } else {
-    loadCheckInTab(visit);
+  if (!visit) {
+    document.getElementById("tabContent").innerHTML =
+      "<p>Visit not initialized yet.</p>";
+    return;
   }
+
+  visit.visitNumber === 1 ? loadScreeningTab() : loadCheckInTab();
 }
 
-/* TAB SWITCH */
 function showTab(tab) {
-  if (tab === "screening") openVisit(activeVisitNumber);
+  if (tab === "screening") loadScreeningTab();
   if (tab === "checkin") loadCheckInTab();
   if (tab === "checkout") loadCheckOutTab();
-  if (tab === "events") loadEventTab();
   if (tab === "withdrawal") loadWithdrawalTab();
 }
 
-/* SCREENING TAB */
-function loadScreeningTab(visit) {
+/* --------- TABS --------- */
+
+function loadScreeningTab() {
   document.getElementById("tabContent").innerHTML = `
     <h3>Visit 1 – Screening</h3>
-
     <label>Ninhydrin OD</label>
     <input id="ninhydrin" type="number" step="0.01">
-
     <label>Pregnancy Test</label>
     <select id="pregnancy">
-      <option value="Negative">Negative</option>
-      <option value="Positive">Positive</option>
+      <option>Negative</option>
+      <option>Positive</option>
     </select>
-
     <button onclick="submitScreening()">Save Screening</button>
   `;
 }
 
-/* SUBMIT SCREENING */
 async function submitScreening() {
   const visit = await loadVisit(selectedPatientId, 1);
   const patient = await getPatient(selectedPatientId);
 
-  const data = {
-    ninhydrin: parseFloat(document.getElementById("ninhydrin").value),
-    pregnancyTest: document.getElementById("pregnancy").value,
-    gender: patient.gender
-  };
-
   try {
-    await saveScreeningData(visit, data);
-    alert("Screening passed. Visit 2 started.");
+    await saveScreeningData(visit, {
+      ninhydrin: parseFloat(document.getElementById("ninhydrin").value),
+      pregnancyTest: document.getElementById("pregnancy").value,
+      gender: patient.gender
+    });
+    alert("Screening completed");
     location.reload();
   } catch (e) {
     alert(e.message);
   }
 }
 
-/* CHECK-IN TAB */
 function loadCheckInTab() {
   document.getElementById("tabContent").innerHTML = `
     <h3>Visit ${activeVisitNumber} – Check-in</h3>
-
     <label>Brushing Time</label>
     <input id="brushTime" type="datetime-local">
-
-    <label>Sample Collection Time</label>
+    <label>Sample Time</label>
     <input id="sampleTime" type="datetime-local">
-
     <button onclick="submitCheckIn()">Save Check-in</button>
   `;
 }
 
-/* SUBMIT CHECK-IN */
 async function submitCheckIn() {
   const visit = await loadVisit(selectedPatientId, activeVisitNumber);
-
-  const data = {
-    brushingTime: document.getElementById("brushTime").value,
-    sampleTime: document.getElementById("sampleTime").value
-  };
-
   try {
-    await saveCheckIn(visit, data);
+    await saveCheckIn(visit, {
+      brushingTime: document.getElementById("brushTime").value,
+      sampleTime: document.getElementById("sampleTime").value
+    });
     alert("Check-in saved");
   } catch (e) {
     alert(e.message);
   }
 }
 
-/* CHECK-OUT TAB */
 function loadCheckOutTab() {
   document.getElementById("tabContent").innerHTML = `
     <h3>Visit ${activeVisitNumber} – Check-out</h3>
-
     <label>Sample Collected At</label>
     <input id="sampleCollectedAt" type="datetime-local">
-
     <label>Analysis Time</label>
     <input id="analysisAt" type="datetime-local">
-
     <button onclick="submitCheckOut()">Complete Visit</button>
   `;
 }
 
-/* SUBMIT CHECK-OUT */
 async function submitCheckOut() {
   const visit = await loadVisit(selectedPatientId, activeVisitNumber);
-
-  const data = {
-    sampleCollectedAt: document.getElementById("sampleCollectedAt").value,
-    analysisAt: document.getElementById("analysisAt").value
-  };
-
   try {
-    await saveCheckOut(visit, data);
+    await saveCheckOut(visit, {
+      sampleCollectedAt: document.getElementById("sampleCollectedAt").value,
+      analysisAt: document.getElementById("analysisAt").value
+    });
     alert("Visit completed");
     location.reload();
   } catch (e) {
@@ -250,27 +211,17 @@ async function submitCheckOut() {
   }
 }
 
-/* EVENTS TAB */
-function loadEventTab() {
-  document.getElementById("tabContent").innerHTML = `
-    <h3>Events</h3>
-    <p>Events are auto-recorded on failure.</p>
-  `;
-}
-
-/* WITHDRAWAL TAB */
 function loadWithdrawalTab() {
   document.getElementById("tabContent").innerHTML = `
     <h3>Withdraw Patient</h3>
-    <label>Reason</label>
     <textarea id="withdrawReason"></textarea>
     <button onclick="withdraw()">Confirm Withdrawal</button>
   `;
 }
 
 async function withdraw() {
-  const reason = document.getElementById("withdrawReason").value;
-  await withdrawPatient(selectedPatientId, reason);
+  await withdrawPatient(selectedPatientId,
+    document.getElementById("withdrawReason").value);
   alert("Patient withdrawn");
   location.reload();
 }

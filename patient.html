@@ -1,170 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
-  <title>Clinelph | Patients</title>
-
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b5ed7">
-
-  <link rel="stylesheet" href="css/main.css">
+  <title>Patients</title>
   <link rel="stylesheet" href="css/patient.css">
 </head>
-
 <body>
 
-<header class="app-header">
-  <div class="logo">Clinelph</div>
-  <div class="study-info">Patient Management</div>
-  <div class="user-info">
-    <span id="userRole"></span>
-    <button onclick="logoutUser()">Logout</button>
-  </div>
-</header>
+<h3>Add Patient</h3>
 
-<div class="container">
-  <main class="content">
+<input id="age" placeholder="Age">
+<select id="gender"><option>Male</option><option>Female</option></select>
+<select id="ethnicity">
+  <option>Asian</option><option>Caucasian</option>
+</select>
 
-    <h2>Patients</h2>
+<button onclick="addPatient()">Generate Card</button>
 
-    <!-- ADD PATIENT FORM -->
-    <section class="patient-summary">
-      <h3>Add New Patient</h3>
+<table id="list"></table>
 
-      <label>Age (18–60)</label>
-      <input type="number" id="age">
-
-      <label>Gender</label>
-      <select id="gender">
-        <option value="">Select</option>
-        <option>Male</option>
-        <option>Female</option>
-      </select>
-
-      <label>Ethnicity</label>
-      <input type="text" id="ethnicity">
-
-      <label>Registration Date & Time</label>
-      <input type="datetime-local" id="regDate">
-
-      <button onclick="addPatient()">Generate Patient ID</button>
-
-      <p id="error" class="error"></p>
-    </section>
-
-    <!-- PATIENT LIST -->
-    <section>
-      <h3>Patient List</h3>
-
-      <table border="1" width="100%" cellpadding="6">
-        <thead>
-          <tr>
-            <th>Patient ID</th>
-            <th>Age</th>
-            <th>Gender</th>
-            <th>Status</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="patientTable"></tbody>
-      </table>
-    </section>
-
-  </main>
-</div>
-
-<!-- SCRIPTS -->
 <script src="js/db.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/patient.js"></script>
-<script src="js/visits.js"></script>
+<script src="js/permissions.js"></script>
 
 <script>
-/* PROTECT PAGE */
-const user = requireAuth();
-document.getElementById("userRole").innerText = user.role;
+requireAuth();
+openDatabase().then(load);
 
-let SITE_CODE = "MUM"; // demo site code
+function addPatient() {
+  if (!canEdit()) return alert("No permission");
 
-document.addEventListener("DOMContentLoaded", async () => {
-  await openDatabase();
-  loadPatients();
-});
-
-/* ADD PATIENT */
-async function addPatient() {
-  const age = parseInt(document.getElementById("age").value);
-  const gender = document.getElementById("gender").value;
-  const ethnicity = document.getElementById("ethnicity").value;
-  const regDate = document.getElementById("regDate").value;
-  const error = document.getElementById("error");
-
-  error.innerText = "";
-
-  if (!age || age < 18 || age > 60) {
-    error.innerText = "Age must be between 18 and 60";
-    return;
-  }
-
-  if (!gender || !ethnicity || !regDate) {
-    error.innerText = "All fields are required";
-    return;
-  }
-
-  const patientId = generatePatientId(SITE_CODE);
-
-  const patient = {
-    patientId,
-    age,
-    gender,
-    ethnicity,
-    registrationDate: regDate,
-    currentVisit: 1,
-    eligibilityStatus: "Screening",
-    status: "Active"
+  const p = {
+    id: crypto.randomUUID(),
+    age: age.value,
+    gender: gender.value,
+    ethnicity: ethnicity.value,
+    status: "Active",
+    study: "CLP-001"
   };
 
-  await addRecord("patients", patient);
-  await initializeVisit1(patientId);
-
-  loadPatients();
-  clearForm();
+  add("patients", p).then(load);
 }
 
-/* LOAD PATIENT LIST */
-async function loadPatients() {
-  const table = document.getElementById("patientTable");
-  table.innerHTML = "";
-
-  const patients = await getAllRecords("patients");
-
-  patients.forEach(p => {
-    const row = document.createElement("tr");
-
-    row.innerHTML = `
-      <td>${p.patientId}</td>
-      <td>${p.age}</td>
-      <td>${p.gender}</td>
-      <td>${p.status}</td>
-      <td><button onclick="openPatient('${p.patientId}')">View</button></td>
-    `;
-
-    table.appendChild(row);
+function load() {
+  getAll("patients").then(p => {
+    list.innerHTML = p.map(x =>
+      `<tr>
+        <td>${x.id}</td>
+        <td>${x.status}</td>
+        <td><button onclick="openCard('${x.id}')">Open</button></td>
+      </tr>`
+    ).join("");
   });
 }
 
-/* OPEN PATIENT CARD */
-function openPatient(patientId) {
-  sessionStorage.setItem("selectedPatientId", patientId);
-  window.location.href = "patient-card.html";
-}
-
-/* CLEAR FORM */
-function clearForm() {
-  document.getElementById("age").value = "";
-  document.getElementById("gender").value = "";
-  document.getElementById("ethnicity").value = "";
-  document.getElementById("regDate").value = "";
+function openCard(id) {
+  sessionStorage.setItem("pid", id);
+  location.href = "patient-card.html";
 }
 </script>
 

@@ -1,75 +1,94 @@
-/* RESET */
-* {
-  box-sizing: border-box;
+/* ===== Global ===== */
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
   margin: 0;
   padding: 0;
-  font-family: "Segoe UI", Arial, sans-serif;
 }
 
-/* BODY */
-body {
-  background-color: #f5f7fa;
-  color: #333;
-}
-
-/* HEADER */
 .app-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background-color: #0b5ed7;
-  color: #fff;
+  background: #0b5ed7;
+  color: white;
   padding: 12px 20px;
-}
-
-.app-header .logo {
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.app-header button {
-  background: #ffffff;
-  color: #0b5ed7;
-  border: none;
-  padding: 6px 12px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-
-/* MAIN CONTAINER */
-.container {
   display: flex;
-  height: calc(100vh - 56px);
+  align-items: center;
+  gap: 15px;
 }
 
-/* CONTENT */
-.content {
-  flex: 1;
+.container {
   padding: 20px;
-  background-color: #ffffff;
-  overflow-y: auto;
 }
 
-/* BUTTONS */
+/* ===== Buttons ===== */
 button {
-  background-color: #0b5ed7;
-  color: #fff;
+  background: #0b5ed7;
+  color: white;
   border: none;
   padding: 8px 14px;
-  margin-top: 10px;
-  cursor: pointer;
   border-radius: 4px;
+  cursor: pointer;
 }
 
 button:hover {
-  background-color: #084298;
+  background: #084298;
 }
 
-/* INPUTS */
+button.danger {
+  background: #dc3545;
+}
+
+button.secondary {
+  background: #6c757d;
+}
+
+/* ===== Inputs ===== */
 input, select, textarea {
   width: 100%;
   padding: 6px;
-  margin: 5px 0 12px 0;
-  border: 1px solid #ccc;
+  margin: 4px 0 12px 0;
   border-radius: 4px;
+  border: 1px solid #ccc;
+}
+
+/* ===== Tables ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  margin-top: 15px;
+}
+
+th {
+  background: #e9ecef;
+  text-align: left;
+  padding: 10px;
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+}
+
+tr:hover {
+  background: #f1f3f5;
+}
+
+/* ===== Status ===== */
+.status-ok {
+  color: green;
+  font-weight: bold;
+}
+
+.status-error {
+  color: red;
+  font-weight: bold;
+}
+
+/* ===== Card ===== */
+.card {
+  background: white;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
 }

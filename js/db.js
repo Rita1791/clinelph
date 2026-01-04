@@ -2,53 +2,39 @@
 
 const DB_NAME = "clinelphDB";
 const DB_VERSION = 1;
-let db = null;
+let db;
 
 function openDatabase() {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+  return new Promise((resolve) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = function (event) {
-      db = event.target.result;
-
-      if (!db.objectStoreNames.contains("users")) {
-        db.createObjectStore("users", { keyPath: "userId" });
-      }
-
-      if (!db.objectStoreNames.contains("studies")) {
-        db.createObjectStore("studies", { keyPath: "studyId" });
-      }
-
-      if (!db.objectStoreNames.contains("patients")) {
-        db.createObjectStore("patients", { keyPath: "patientId" });
-      }
-
-      if (!db.objectStoreNames.contains("visits")) {
-        db.createObjectStore("visits", { keyPath: "visitId" });
-      }
-
-      if (!db.objectStoreNames.contains("events")) {
-        db.createObjectStore("events", { keyPath: "eventId" });
-      }
-
-      if (!db.objectStoreNames.contains("withdrawals")) {
-        db.createObjectStore("withdrawals", { keyPath: "withdrawalId" });
-      }
-
-      if (!db.objectStoreNames.contains("auditLogs")) {
-        db.createObjectStore("auditLogs", { keyPath: "logId" });
-      }
+    req.onupgradeneeded = e => {
+      db = e.target.result;
+      ["patients","visits","audit"].forEach(s => {
+        if (!db.objectStoreNames.contains(s))
+          db.createObjectStore(s, { keyPath: "id" });
+      });
     };
 
-    request.onsuccess = function (event) {
-      db = event.target.result;
-      console.log("IndexedDB opened:", DB_NAME);
-      resolve(db);
+    req.onsuccess = e => {
+      db = e.target.result;
+      resolve();
     };
+  });
+}
 
-    request.onerror = function (event) {
-      console.error("IndexedDB error:", event.target.error);
-      reject("Failed to open database");
-    };
+function add(store, obj) {
+  return new Promise(r => {
+    const tx = db.transaction(store,"readwrite");
+    tx.objectStore(store).put(obj);
+    tx.oncomplete = r;
+  });
+}
+
+function getAll(store) {
+  return new Promise(r => {
+    const tx = db.transaction(store);
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = () => r(req.result);
   });
 }

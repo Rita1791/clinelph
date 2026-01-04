@@ -1,7 +1,9 @@
-// js/auth.js
-
 function loginUser(email, role) {
-  sessionStorage.setItem("user", JSON.stringify({ email, role }));
+  sessionStorage.setItem("user", JSON.stringify({
+    email,
+    role,
+    time: new Date().toISOString()
+  }));
 }
 
 function getCurrentUser() {
@@ -10,11 +12,24 @@ function getCurrentUser() {
 
 function requireAuth() {
   const user = getCurrentUser();
-  if (!user) location.href = "index.html";
+  if (!user) {
+    alert("Session expired");
+    window.location.href = "index.html";
+  }
   return user;
+}
+
+function canEdit() {
+  const role = getCurrentUser().role;
+  return ["DataEntry","CRC","Phlebotomist","OA"].includes(role);
+}
+
+function canDelete() {
+  const role = getCurrentUser().role;
+  return ["QC","QA","PI"].includes(role);
 }
 
 function logoutUser() {
   sessionStorage.clear();
-  location.href = "index.html";
+  window.location.href = "index.html";
 }

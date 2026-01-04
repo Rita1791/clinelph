@@ -1,18 +1,5 @@
-function randomizeProduct() {
-  return Math.random() > 0.5 ? "A19" : "K87";
-}
-
-async function assignRandomization(patientId, visitNumber) {
-
-  const product = randomizeProduct();
-
-  await addRecord("auditLogs", {
-    logId: `RAND-${Date.now()}`,
-    patientId: patientId,
-    visitNumber: visitNumber,
-    product: product,
-    timestamp: new Date().toISOString()
-  });
-
-  return product;
+function randomizeProduct(previous=null) {
+  const products = ["A19","K87"];
+  if (!previous) return products[Math.floor(Math.random()*2)];
+  return products.find(p => p !== previous);
 }

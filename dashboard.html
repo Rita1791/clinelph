@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Dashboard</title>
+  <title>Clinelph | Dashboard</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-<header>
+<header class="app-header">
   <img src="assets/logo.png" height="40">
-  <span id="role"></span>
+  <h3>Dashboard</h3>
   <button onclick="logoutUser()">Logout</button>
 </header>
 
-<h2>Dashboard</h2>
-
-<button onclick="location.href='patient.html'">
-  Patient Management
-</button>
+<div class="container">
+  <button onclick="goPatients()">Patient Management</button>
+</div>
 
 <script src="js/auth.js"></script>
 <script>
-const u = requireAuth();
-role.innerText = u.role;
+requireAuth();
+function goPatients() {
+  window.location.href = "patient.html";
+}
 </script>
 
 </body>

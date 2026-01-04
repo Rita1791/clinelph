@@ -1,4 +1,69 @@
-<div class="container">
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Patients</title>
+</head>
+<body>
+
+<h3>Add Patient</h3>
+
+<input id="age" placeholder="Age">
+<select id="gender">
+  <option>Male</option>
+  <option>Female</option>
+</select>
+
+<select id="ethnicity">
+  <option>Asian</option>
+  <option>Caucasian</option>
+  <option>African</option>
+  <option>Hispanic</option>
+  <option>Other</option>
+</select>
+
+<button onclick="addPatient()">Add</button>
+
+<ul id="list"></ul>
+
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+<script>
+requireAuth();
+openDatabase().then(load);
+
+function addPatient() {
+  const protocol = sessionStorage.getItem("studyProtocol");
+  const id = protocol + "-" + Date.now();
+
+  addRecord("patients", {
+    patientId: id,
+    age: age.value,
+    gender: gender.value,
+    ethnicity: ethnicity.value,
+    status: "Active"
+  });
+  load();
+}
+
+async function load() {
+  list.innerHTML = "";
+  const patients = await getAllRecords("patients");
+  patients.forEach(p => {
+    const li = document.createElement("li");
+    li.innerHTML = `${p.patientId} 
+      <button onclick="openCard('${p.patientId}')">View</button>`;
+    list.appendChild(li);
+  });
+}
+
+function openCard(id) {
+  sessionStorage.setItem("selectedPatientId", id);
+  location.href = "patient-card.html";
+}
+</script>
+
+</body>
+  <div class="container">
 
   <div class="card">
     <h3>Add New Patient</h3>
@@ -42,6 +107,7 @@
     </table>
   </div>
 
+</div>
 patients.forEach(p => {
   const tr = document.createElement("tr");
 
@@ -61,4 +127,4 @@ patients.forEach(p => {
   list.appendChild(tr);
 });
 
-</div>
+</html>

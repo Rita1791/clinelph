@@ -1,0 +1,55 @@
+/* TIMELINE */
+.timeline {
+  width: 260px;
+  background-color: #eef2f6;
+  padding: 15px;
+  border-right: 1px solid #ccc;
+}
+
+.timeline h3 {
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.timeline ul {
+  list-style: none;
+}
+
+.timeline li {
+  padding: 10px;
+  margin-bottom: 6px;
+  background-color: #ffffff;
+  border-left: 5px solid #adb5bd;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+/* TIMELINE STATES */
+.timeline li.done {
+  border-left-color: #198754;
+  background-color: #e9f7ef;
+}
+
+.timeline li.active {
+  border-left-color: #0b5ed7;
+  background-color: #e7f1ff;
+  font-weight: bold;
+}
+
+/* PATIENT SUMMARY */
+.patient-summary {
+  background-color: #f8f9fa;
+  padding: 15px;
+  border: 1px solid #ddd;
+  margin-bottom: 15px;
+}
+
+.patient-summary h2 {
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.patient-summary p {
+  font-size: 14px;
+  margin-bottom: 4px;
+}

@@ -82,4 +82,30 @@ function remove() {
 </script>
 
 </body>
+  <div class="container">
+
+  <div class="card">
+    <h3>Patient Card</h3>
+    <p><strong>Patient ID:</strong> <span id="pid"></span></p>
+  </div>
+
+  <div class="card">
+    <h4>Product Randomization</h4>
+    <button onclick="randomize()">Randomize Product</button>
+    <p><strong>Assigned Product:</strong> <span id="product"></span></p>
+  </div>
+
+  <div class="card">
+    <h4>Edit / Action</h4>
+
+    <label>Reason for Change</label>
+    <textarea id="reason"></textarea>
+
+    <button onclick="save()">Save Changes</button>
+    <button class="danger" onclick="remove()">Delete Patient</button>
+  </div>
+
+</div>
+
 </html>
+

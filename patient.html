@@ -2,59 +2,62 @@
 <html>
 <head>
   <title>Patients</title>
-  <link rel="stylesheet" href="css/patient.css">
 </head>
 <body>
 
 <h3>Add Patient</h3>
 
 <input id="age" placeholder="Age">
-<select id="gender"><option>Male</option><option>Female</option></select>
-<select id="ethnicity">
-  <option>Asian</option><option>Caucasian</option>
+<select id="gender">
+  <option>Male</option>
+  <option>Female</option>
 </select>
 
-<button onclick="addPatient()">Generate Card</button>
+<select id="ethnicity">
+  <option>Asian</option>
+  <option>Caucasian</option>
+  <option>African</option>
+  <option>Hispanic</option>
+  <option>Other</option>
+</select>
 
-<table id="list"></table>
+<button onclick="addPatient()">Add</button>
+
+<ul id="list"></ul>
 
 <script src="js/db.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/permissions.js"></script>
-
 <script>
 requireAuth();
 openDatabase().then(load);
 
 function addPatient() {
-  if (!canEdit()) return alert("No permission");
+  const protocol = sessionStorage.getItem("studyProtocol");
+  const id = protocol + "-" + Date.now();
 
-  const p = {
-    id: crypto.randomUUID(),
+  addRecord("patients", {
+    patientId: id,
     age: age.value,
     gender: gender.value,
     ethnicity: ethnicity.value,
-    status: "Active",
-    study: "CLP-001"
-  };
-
-  add("patients", p).then(load);
+    status: "Active"
+  });
+  load();
 }
 
-function load() {
-  getAll("patients").then(p => {
-    list.innerHTML = p.map(x =>
-      `<tr>
-        <td>${x.id}</td>
-        <td>${x.status}</td>
-        <td><button onclick="openCard('${x.id}')">Open</button></td>
-      </tr>`
-    ).join("");
+async function load() {
+  list.innerHTML = "";
+  const patients = await getAllRecords("patients");
+  patients.forEach(p => {
+    const li = document.createElement("li");
+    li.innerHTML = `${p.patientId} 
+      <button onclick="openCard('${p.patientId}')">View</button>`;
+    list.appendChild(li);
   });
 }
 
 function openCard(id) {
-  sessionStorage.setItem("pid", id);
+  sessionStorage.setItem("selectedPatientId", id);
   location.href = "patient-card.html";
 }
 </script>

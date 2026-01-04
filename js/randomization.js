@@ -5,3 +5,8 @@ function randomizeProduct(previous = null) {
   }
   return products.find(p => p !== previous);
 }
+if (!canEdit()) {
+  document.querySelectorAll("input, select, textarea, button")
+    .forEach(el => el.disabled = true);
+}
+product.className = "status-ok";

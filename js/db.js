@@ -3,10 +3,10 @@ const DB_VERSION = 1;
 let db;
 
 function openDatabase() {
-  return new Promise((resolve) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+  return new Promise(resolve => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = e => {
+    req.onupgradeneeded = e => {
       db = e.target.result;
       ["patients","visits","auditLogs"].forEach(store => {
         if (!db.objectStoreNames.contains(store)) {
@@ -15,7 +15,7 @@ function openDatabase() {
       });
     };
 
-    request.onsuccess = e => {
+    req.onsuccess = e => {
       db = e.target.result;
       resolve();
     };
@@ -24,19 +24,16 @@ function openDatabase() {
 
 function addRecord(store, data) {
   data.id = crypto.randomUUID();
-  const tx = db.transaction(store, "readwrite");
-  tx.objectStore(store).add(data);
+  db.transaction(store, "readwrite").objectStore(store).add(data);
 }
 
 function updateRecord(store, data) {
-  const tx = db.transaction(store, "readwrite");
-  tx.objectStore(store).put(data);
+  db.transaction(store, "readwrite").objectStore(store).put(data);
 }
 
 function getAllRecords(store) {
   return new Promise(resolve => {
-    const tx = db.transaction(store, "readonly");
-    const req = tx.objectStore(store).getAll();
+    const req = db.transaction(store).objectStore(store).getAll();
     req.onsuccess = () => resolve(req.result);
   });
 }

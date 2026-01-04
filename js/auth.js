@@ -37,3 +37,20 @@ function logoutUser() {
   // Works on localhost and GitHub Pages
   window.location.href = "index.html";
 }
+// ---- ROLE PERMISSIONS ----
+
+function canEditData() {
+  const role = getCurrentUser()?.role;
+  return ["DataEntry", "CRC", "Phlebotomist", "OA"].includes(role);
+}
+
+function canDeletePatient() {
+  const role = getCurrentUser()?.role;
+  return ["QC", "QA", "PI"].includes(role);
+}
+
+function canCommentOnly() {
+  const role = getCurrentUser()?.role;
+  return ["QC", "QA", "Sponsor"].includes(role);
+}
+

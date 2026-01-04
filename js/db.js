@@ -1,40 +1,42 @@
-// js/db.js
-
 const DB_NAME = "clinelphDB";
 const DB_VERSION = 1;
 let db;
 
 function openDatabase() {
   return new Promise((resolve) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    req.onupgradeneeded = e => {
+    request.onupgradeneeded = e => {
       db = e.target.result;
-      ["patients","visits","audit"].forEach(s => {
-        if (!db.objectStoreNames.contains(s))
-          db.createObjectStore(s, { keyPath: "id" });
+      ["patients","visits","auditLogs"].forEach(store => {
+        if (!db.objectStoreNames.contains(store)) {
+          db.createObjectStore(store, { keyPath: "id" });
+        }
       });
     };
 
-    req.onsuccess = e => {
+    request.onsuccess = e => {
       db = e.target.result;
       resolve();
     };
   });
 }
 
-function add(store, obj) {
-  return new Promise(r => {
-    const tx = db.transaction(store,"readwrite");
-    tx.objectStore(store).put(obj);
-    tx.oncomplete = r;
-  });
+function addRecord(store, data) {
+  data.id = crypto.randomUUID();
+  const tx = db.transaction(store, "readwrite");
+  tx.objectStore(store).add(data);
 }
 
-function getAll(store) {
-  return new Promise(r => {
-    const tx = db.transaction(store);
+function updateRecord(store, data) {
+  const tx = db.transaction(store, "readwrite");
+  tx.objectStore(store).put(data);
+}
+
+function getAllRecords(store) {
+  return new Promise(resolve => {
+    const tx = db.transaction(store, "readonly");
     const req = tx.objectStore(store).getAll();
-    req.onsuccess = () => r(req.result);
+    req.onsuccess = () => resolve(req.result);
   });
 }

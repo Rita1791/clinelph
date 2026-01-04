@@ -1,7 +1,8 @@
-<script>
+// js/db.js
+
 const DB_NAME = "clinelphDB";
 const DB_VERSION = 1;
-let db;
+let db = null;
 
 function openDatabase() {
   return new Promise((resolve, reject) => {
@@ -10,36 +11,44 @@ function openDatabase() {
     request.onupgradeneeded = function (event) {
       db = event.target.result;
 
-      if (!db.objectStoreNames.contains("users"))
+      if (!db.objectStoreNames.contains("users")) {
         db.createObjectStore("users", { keyPath: "userId" });
+      }
 
-      if (!db.objectStoreNames.contains("studies"))
+      if (!db.objectStoreNames.contains("studies")) {
         db.createObjectStore("studies", { keyPath: "studyId" });
+      }
 
-      if (!db.objectStoreNames.contains("patients"))
+      if (!db.objectStoreNames.contains("patients")) {
         db.createObjectStore("patients", { keyPath: "patientId" });
+      }
 
-      if (!db.objectStoreNames.contains("visits"))
+      if (!db.objectStoreNames.contains("visits")) {
         db.createObjectStore("visits", { keyPath: "visitId" });
+      }
 
-      if (!db.objectStoreNames.contains("events"))
+      if (!db.objectStoreNames.contains("events")) {
         db.createObjectStore("events", { keyPath: "eventId" });
+      }
 
-      if (!db.objectStoreNames.contains("withdrawals"))
+      if (!db.objectStoreNames.contains("withdrawals")) {
         db.createObjectStore("withdrawals", { keyPath: "withdrawalId" });
+      }
 
-      if (!db.objectStoreNames.contains("auditLogs"))
+      if (!db.objectStoreNames.contains("auditLogs")) {
         db.createObjectStore("auditLogs", { keyPath: "logId" });
+      }
     };
 
     request.onsuccess = function (event) {
       db = event.target.result;
+      console.log("IndexedDB opened:", DB_NAME);
       resolve(db);
     };
 
-    request.onerror = function () {
+    request.onerror = function (event) {
+      console.error("IndexedDB error:", event.target.error);
       reject("Failed to open database");
     };
   });
 }
-</script>

@@ -81,9 +81,11 @@ async function load() {
 }
 
 function openCard(pid) {
+  console.log("Opening patient:", pid);
   sessionStorage.setItem("pid", pid);
-  location.href = "patient-card.html";
+  window.location.href = "patient-card.html";
 }
+
 </script>
 </body>
 </html>
@@ -141,4 +143,5 @@ function openCard(pid) {
   window.location.href = "patient-card.html";
 }
 </script>
+
 

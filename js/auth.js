@@ -1,26 +1,18 @@
-function loginUser(email, role) {
-  sessionStorage.setItem("user", JSON.stringify({ email, role }));
+function loginUser(role) {
+  sessionStorage.setItem("user", JSON.stringify({ role }));
 }
 
-function getCurrentUser() {
+function getUser() {
   return JSON.parse(sessionStorage.getItem("user"));
 }
 
 function requireAuth() {
-  const u = getCurrentUser();
+  const u = getUser();
   if (!u) location.href = "index.html";
   return u;
 }
 
-function canEdit() {
-  return ["DataEntry","CRC","Phlebotomist","OA"].includes(getCurrentUser().role);
-}
-
-function canDelete() {
-  return ["QC","QA","PI"].includes(getCurrentUser().role);
-}
-
-function logoutUser() {
+function logout() {
   sessionStorage.clear();
   location.href = "index.html";
 }

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Clinelph | Dashboard</title>
+  <title>Dashboard</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
@@ -13,16 +13,12 @@
 </header>
 
 <div class="container">
-  <button onclick="goPatients()">Patient Management</button>
+  <button onclick="location.href='patient.html'">Patient Management</button>
+  <button onclick="location.href='audit.html'">Audit Logs</button>
 </div>
 
 <script src="js/auth.js"></script>
-<script>
-requireAuth();
-function goPatients() {
-  window.location.href = "patient.html";
-}
-</script>
+<script>requireAuth();</script>
 
 </body>
 </html>

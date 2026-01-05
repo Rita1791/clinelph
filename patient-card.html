@@ -1,43 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Patient Card</title>
+  <title>Clinelph | Patient Card</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
+<header class="app-header">
+  <img src="assets/logo.png" height="40">
+  <h3>Patient Card</h3>
+  <button onclick="logoutUser()">Logout</button>
+</header>
+
 <div class="container">
 
-<div class="card">
-  <h3>Patient ID: <span id="pid"></span></h3>
+  <!-- PATIENT SUMMARY -->
+  <div class="card">
+    <h3>Patient ID: <span id="pid"></span></h3>
+    <p>Status: <span id="pstatus"></span></p>
+    <p>Current Visit: <span id="currentVisit"></span></p>
+  </div>
+
+  <!-- VISIT TABS -->
+  <div class="card tabs">
+    <button onclick="openVisit(1)">Visit 1 – Screening</button>
+    <button onclick="openVisit(2)">Visit 2 – Baseline</button>
+    <button onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
+    <button onclick="openVisit(4)">Visit 4 – Baseline</button>
+    <button onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
+  </div>
+
+  <!-- VISIT CONTENT -->
+  <div class="card" id="visitCard"></div>
+
+  <!-- WITHDRAWAL -->
+  <div class="card">
+    <h4>Withdraw Patient</h4>
+    <textarea id="withdrawReason" placeholder="Reason for withdrawal"></textarea>
+    <button class="danger" onclick="withdrawPatient()">Withdraw</button>
+  </div>
+
 </div>
 
-<div class="card tabs">
-  <button onclick="openVisit(1)">Visit 1 – Screening</button>
-  <button onclick="openVisit(2)">Visit 2 – Baseline</button>
-  <button onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
-  <button onclick="openVisit(4)">Visit 4 – Baseline</button>
-  <button onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
-</div>
-
-<div class="card" id="visitCard"></div>
-
-</div>
-
+<script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/visits.js"></script>
-<script src="js/auth.js"></script>
+<script src="js/randomization.js"></script>
 
 <script>
-requireAuth();
-openDatabase().then(() => {
-  document.getElementById("pid").innerText = pid;
-  openVisit(1);
-});
-
+/* -------------------- INIT -------------------- */
+const user = requireAuth();
 const pid = sessionStorage.getItem("pid");
 
-/* ---------- VISIT LOADER ---------- */
+openDatabase().then(loadPatient);
+
+async function loadPatient() {
+  const patients = await getAllRecords("patients");
+  const patient = patients.find(p => p.patientId === pid);
+
+  document.getElementById("pid").innerText = pid;
+  document.getElementById("pstatus").innerText = patient.status;
+  document.getElementById("currentVisit").innerText = patient.currentVisit;
+
+  openVisit(patient.currentVisit);
+}
+
+/* -------------------- VISIT HANDLER -------------------- */
 async function openVisit(no) {
   const check = await canStartVisit(pid, no);
   const visit = await getVisit(pid, no);
@@ -54,10 +82,13 @@ async function openVisit(no) {
   else loadTreatment(visit);
 }
 
-/* ---------- VISIT 1: SCREENING ---------- */
+/* -------------------- VISIT 1 – SCREENING -------------------- */
 function loadScreening(v) {
   visitCard.innerHTML = `
-    <h4>Screening Visit</h4>
+    <h4>Visit 1 – Screening</h4>
+
+    <label>Screening Date & Time</label>
+    <input id="scrDate" type="datetime-local" value="${v.data.scrDate || ""}">
 
     <label>Blood Pressure</label>
     <input id="bp" value="${v.data.bp || ""}">
@@ -65,53 +96,89 @@ function loadScreening(v) {
     <label>Pulse</label>
     <input id="pulse" value="${v.data.pulse || ""}">
 
+    <label>Fasting Blood Glucose</label>
+    <input id="glucose" value="${v.data.glucose || ""}">
+
+    <label>Urine Pregnancy Test (Female)</label>
+    <select id="preg">
+      <option>Negative</option>
+      <option>Positive</option>
+    </select>
+
     <label>Ninhydrin OD</label>
     <input id="od" type="number" step="0.01" value="${v.data.od || ""}">
 
     <label>Eligibility</label>
     <select id="elig">
-      <option value="Yes">Eligible</option>
-      <option value="No">Not Eligible</option>
+      <option value="Pass">Pass</option>
+      <option value="Fail">Fail</option>
     </select>
 
     <button onclick="saveScreening()">Save Screening</button>
   `;
 }
 
+/* SAVE SCREENING */
 async function saveScreening() {
-  const v = await getVisit(pid, 1);
+  const visits = await getAllRecords("visits");
+  const v = visits.find(x => x.patientId === pid && x.visitNo === 1);
 
-  v.data.bp = bp.value;
-  v.data.pulse = pulse.value;
-  v.data.od = parseFloat(od.value);
-  v.data.eligibility = elig.value;
+  v.data = {
+    scrDate: scrDate.value,
+    bp: bp.value,
+    pulse: pulse.value,
+    glucose: glucose.value,
+    pregnancy: preg.value,
+    od: parseFloat(od.value),
+    eligibility: elig.value
+  };
 
-  if (v.data.od <= 0.35 || v.data.eligibility === "No") {
-    alert("Patient failed screening");
+  if (v.data.od <= 0.35 || v.data.eligibility === "Fail" || v.data.pregnancy === "Positive") {
     v.status = "Failed";
-  } else {
-    v.status = "Completed";
-    v.visitDate = today();
+    updateRecord("visits", v);
+    alert("Patient failed screening");
+    return;
   }
 
+  v.status = "Completed";
+  v.visitDate = scrDate.value.split("T")[0];
   updateRecord("visits", v);
-  alert("Screening saved");
+
+  const patients = await getAllRecords("patients");
+  const p = patients.find(p => p.patientId === pid);
+  p.currentVisit = 2;
+  updateRecord("patients", p);
+
+  alert("Screening passed");
+  location.reload();
 }
 
-/* ---------- VISIT 2–5: TREATMENT ---------- */
+/* -------------------- VISITS 2–5 -------------------- */
 function loadTreatment(v) {
   visitCard.innerHTML = `
     <h4>${v.visitName}</h4>
 
-    <label>Check-in Time</label>
+    <label>Check-in Date & Time</label>
     <input id="checkin" type="datetime-local" value="${v.data.checkin || ""}">
 
+    <label>Brushing Time</label>
+    <input id="brush" type="datetime-local" value="${v.data.brush || ""}">
+
+    <label>Sample Collection Time</label>
+    <input id="sample" type="datetime-local" value="${v.data.sample || ""}">
+
     <label>Product Assigned</label>
-    <input id="product" value="${v.data.product || ""}" readonly>
+    <input id="product" readonly value="${v.data.product || ""}">
 
-    <button onclick="assignProduct()">Randomize Product</button>
+    <button onclick="doRandomize()">Randomize Product</button>
 
-    <button onclick="saveTreatment()">Save Visit</button>
+    <label>Breakfast (Remarks)</label>
+    <input id="breakfast" value="${v.data.breakfast || ""}">
+
+    <label>Check-out Date & Time</label>
+    <input id="checkout" type="datetime-local" value="${v.data.checkout || ""}">
+
+    <button onclick="saveTreatment(${v.visitNo})">Save Visit</button>
 
     <p>Status:
       <span class="${v.status === 'Completed' ? 'status-ok' : 'status-pending'}">
@@ -121,26 +188,59 @@ function loadTreatment(v) {
   `;
 }
 
-function assignProduct() {
-  const p = Math.random() > 0.5 ? "A19" : "K87";
-  document.getElementById("product").value = p;
+function doRandomize() {
+  product.value = randomizeProduct();
 }
 
-async function saveTreatment() {
-  const v = await getVisit(pid, vno());
+/* SAVE TREATMENT VISIT */
+async function saveTreatment(no) {
+  const visits = await getAllRecords("visits");
+  const v = visits.find(x => x.patientId === pid && x.visitNo === no);
 
-  v.data.checkin = checkin.value;
-  v.data.product = product.value;
+  v.data = {
+    checkin: checkin.value,
+    brush: brush.value,
+    sample: sample.value,
+    product: product.value,
+    breakfast: breakfast.value,
+    checkout: checkout.value
+  };
+
   v.status = "Completed";
-  v.visitDate = today();
-
+  v.visitDate = checkin.value.split("T")[0];
   updateRecord("visits", v);
+
+  const patients = await getAllRecords("patients");
+  const p = patients.find(p => p.patientId === pid);
+  p.currentVisit = Math.min(no + 1, 5);
+  updateRecord("patients", p);
+
   alert("Visit saved");
+  location.reload();
 }
 
-function vno() {
-  return [...document.querySelectorAll(".tabs button")]
-    .findIndex(b => b.classList.contains("active")) + 1;
+/* -------------------- WITHDRAWAL -------------------- */
+async function withdrawPatient() {
+  if (!withdrawReason.value) {
+    alert("Reason required");
+    return;
+  }
+
+  const patients = await getAllRecords("patients");
+  const p = patients.find(p => p.patientId === pid);
+  p.status = "Withdrawn";
+  updateRecord("patients", p);
+
+  addRecord("auditLogs", {
+    patientId: pid,
+    action: "WITHDRAWAL",
+    reason: withdrawReason.value,
+    user: user.email,
+    time: new Date().toISOString()
+  });
+
+  alert("Patient withdrawn");
+  location.href = "patient.html";
 }
 </script>
 

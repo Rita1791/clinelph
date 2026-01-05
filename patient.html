@@ -1,18 +1,121 @@
-<!-- only core part shown -->
-<button onclick="registerPatient()">Register Patient</button>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Clinelph | Patient Management</title>
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+
+<!-- ================= HEADER ================= -->
+<header class="app-header">
+  <div class="left">
+    <img src="assets/logo.png">
+    <div>
+      <div class="title">Clinelph – Patient Management</div>
+      <div class="meta">
+        Protocol: CLP-001 |
+        Role: <span id="userRole"></span>
+      </div>
+    </div>
+  </div>
+  <button onclick="logoutUser()">Logout</button>
+</header>
+
+<!-- ================= LAYOUT ================= -->
+<div class="layout">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <h4>Navigation</h4>
+    <button onclick="go('dashboard.html')">Dashboard</button>
+    <button onclick="go('patient.html')">Patients</button>
+    <button onclick="go('audit.html')">Audit Logs</button>
+  </aside>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main">
+
+    <!-- REGISTRATION CARD -->
+    <div class="card">
+      <h3>Register New Patient</h3>
+
+      <div class="alert info">
+        Registration date is considered <b>Visit 1 – Screening</b>.
+        Age must be between <b>18–60 years</b>.
+      </div>
+
+      <label>Age</label>
+      <input id="age" type="number">
+
+      <label>Gender</label>
+      <select id="gender">
+        <option>Male</option>
+        <option>Female</option>
+      </select>
+
+      <label>Ethnicity</label>
+      <select id="ethnicity">
+        <option>Asian</option>
+        <option>Caucasian</option>
+        <option>African</option>
+        <option>Hispanic</option>
+        <option>Other</option>
+      </select>
+
+      <button class="primary" onclick="registerPatient()">
+        Generate Patient Card
+      </button>
+    </div>
+
+    <!-- PATIENT LIST -->
+    <div class="card">
+      <h3>Registered Patients</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Patient ID</th>
+            <th>Gender</th>
+            <th>Ethnicity</th>
+            <th>Status</th>
+            <th>Current Visit</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="patientList"></tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/visits.js"></script>
 
 <script>
+/* ---------- INIT ---------- */
+const user = requireAuth();
+document.getElementById("userRole").innerText = user.role;
+
+openDatabase().then(loadPatients);
+
+/* ---------- REGISTER PATIENT ---------- */
 async function registerPatient() {
   if (age.value < 18 || age.value > 60) {
-    alert("Age must be between 18 and 60");
+    alert("Age must be between 18 and 60 years");
     return;
   }
 
-  const patientId =
-    PROTOCOL.code + "-MUM-" + new Date().getFullYear() + "-" + Math.floor(Math.random()*9000);
+  const pid =
+    "CLP-001-MUM-" +
+    new Date().getFullYear() +
+    "-" +
+    Math.floor(1000 + Math.random() * 9000);
 
   addRecord("patients", {
-    patientId,
+    patientId: pid,
     age: age.value,
     gender: gender.value,
     ethnicity: ethnicity.value,
@@ -20,18 +123,50 @@ async function registerPatient() {
     currentVisit: 1
   });
 
-  // initialize all visits immediately
-  PROTOCOL.visits.forEach(v => {
-    addRecord("visits", {
-      patientId,
-      visitNo: v.no,
-      visitName: v.name,
-      status: "Pending",
-      visitDate: null,
-      data: {}
-    });
-  });
+  await initVisits(pid);
 
-  alert("Patient registered (Visit 1 created)");
+  alert("Patient registered successfully");
+  loadPatients();
+}
+
+/* ---------- LOAD PATIENTS ---------- */
+async function loadPatients() {
+  const list = document.getElementById("patientList");
+  list.innerHTML = "";
+
+  const patients = await getAllRecords("patients");
+
+  patients.forEach(p => {
+    list.innerHTML += `
+      <tr>
+        <td>${p.patientId}</td>
+        <td>${p.gender}</td>
+        <td>${p.ethnicity}</td>
+        <td class="${
+          p.status === "Withdrawn" || p.status === "Failed"
+            ? "fail"
+            : "ok"
+        }">${p.status}</td>
+        <td>${p.currentVisit}</td>
+        <td>
+          <button class="secondary" onclick="openCard('${p.patientId}')">
+            Open Card
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+}
+
+function openCard(id) {
+  sessionStorage.setItem("pid", id);
+  location.href = "patient-card.html";
+}
+
+function go(page) {
+  location.href = page;
 }
 </script>
+
+</body>
+</html>

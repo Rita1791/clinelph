@@ -2,98 +2,71 @@
 <html>
 <head>
   <title>Patients</title>
-  <link rel="stylesheet" href="css/main.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body>
 
-<header>
-  <img src="assets/logo.png">
-  <button onclick="logout()">Logout</button>
-</header>
+<nav class="navbar navbar-dark bg-primary px-3">
+  <span class="navbar-brand">Patients</span>
+  <button class="btn btn-light btn-sm" onclick="logout()">Logout</button>
+</nav>
 
-<div class="container">
+<div class="container mt-4">
+  <div class="card p-3 mb-3">
+    <h5>Create Patient</h5>
+    <div class="row g-2">
+      <div class="col"><input id="age" class="form-control" placeholder="Age"></div>
+      <div class="col"><select id="gender" class="form-select"><option>Male</option><option>Female</option></select></div>
+      <div class="col"><input id="ethnicity" class="form-control" placeholder="Ethnicity"></div>
+      <div class="col"><button class="btn btn-primary" onclick="register()">Generate</button></div>
+    </div>
+  </div>
 
-<div class="card">
-  <h3>Register Patient</h3>
-
-  <input id="age" placeholder="Age">
-  <select id="gender">
-    <option>Male</option>
-    <option>Female</option>
-  </select>
-
-  <select id="ethnicity">
-    <option>Asian</option>
-    <option>Caucasian</option>
-  </select>
-
-  <button onclick="register()">Register</button>
-</div>
-
-<div class="card">
-  <h3>Patient List</h3>
-  <table>
-    <thead>
-      <tr><th>ID</th><th>Status</th><th></th></tr>
-    </thead>
-    <tbody id="list"></tbody>
+  <table class="table table-sm">
+    <thead><tr><th>ID</th><th>Status</th><th></th></tr></thead>
+    <tbody id="plist"></tbody>
   </table>
-</div>
-
 </div>
 
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
-<script src="js/visits.js"></script>
-
+<script src="js/protocol.js"></script>
 <script>
 requireAuth();
-
 openDB().then(load);
 
-function register() {
-  if (age.value < 18 || age.value > 60) {
-    alert("Age must be 18–60");
-    return;
-  }
-
+async function register() {
   const pid = "CLP-" + Date.now();
-
-  add("patients", {
+  await addRecord("patients", {
     patientId: pid,
     age: age.value,
     gender: gender.value,
     ethnicity: ethnicity.value,
-    status: "Active",
+    status: "Screening",
     currentVisit: 1
   });
-
-  initVisits(pid);
+  await initVisits(pid);
   load();
 }
 
 async function load() {
-  list.innerHTML = "";
-  const patients = await getAll("patients");
-
-  patients.forEach(p => {
-    list.innerHTML += `
+  plist.innerHTML = "";
+  const pts = await getAllRecords("patients");
+  pts.forEach(p => {
+    plist.innerHTML += `
       <tr>
         <td>${p.patientId}</td>
-        <td class="ok">${p.status}</td>
-        <td>
-          <button onclick="openCard('${p.patientId}')">Open</button>
-        </td>
-      </tr>
-    `;
+        <td>${p.status}</td>
+        <td><button class="btn btn-sm btn-outline-primary"
+          onclick="openCard('${p.patientId}')">Open</button></td>
+      </tr>`;
   });
 }
 
-function openCard(id) {
-  sessionStorage.setItem("pid", id);
+function openCard(pid) {
+  sessionStorage.setItem("pid", pid);
   location.href = "patient-card.html";
 }
 </script>
-
 </body>
 </html>

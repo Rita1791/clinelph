@@ -1,25 +1,101 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Audit</title>
+  <title>Clinelph | Audit Trail</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-<div class="container card">
-<h3>Audit Logs</h3>
-<table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Reason</th></tr></thead>
-<tbody id="a"></tbody></table>
+<!-- ================= HEADER ================= -->
+<header class="app-header">
+  <div class="left">
+    <img src="assets/logo.png">
+    <div>
+      <div class="title">Clinelph – Audit Trail</div>
+      <div class="meta">
+        Protocol: CLP-001 |
+        Role: <span id="userRole"></span>
+      </div>
+    </div>
+  </div>
+  <button onclick="logoutUser()">Logout</button>
+</header>
+
+<!-- ================= LAYOUT ================= -->
+<div class="layout">
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <h4>Navigation</h4>
+    <button onclick="go('dashboard.html')">Dashboard</button>
+    <button onclick="go('patient.html')">Patients</button>
+    <button onclick="go('audit.html')">Audit Logs</button>
+  </aside>
+
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main">
+
+    <div class="card">
+      <h3>System Audit Logs</h3>
+
+      <div class="alert info">
+        Audit logs are system-generated and cannot be edited or deleted.
+        All actions are time-stamped for compliance review.
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Date & Time</th>
+            <th>User</th>
+            <th>Role</th>
+            <th>Action</th>
+            <th>Patient ID</th>
+            <th>Reason</th>
+          </tr>
+        </thead>
+        <tbody id="auditTable"></tbody>
+      </table>
+    </div>
+
+  </main>
 </div>
 
-<script src="js/db.js"></script>
+<!-- ================= SCRIPTS ================= -->
 <script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+
 <script>
-requireAuth(); openDatabase().then(async()=>{
-  (await getAllRecords("auditLogs")).forEach(l=>{
-    a.innerHTML+=`<tr><td>${l.time}</td><td>${l.user}</td><td>${l.action}</td><td>${l.reason}</td></tr>`;
+/* ---------- INIT ---------- */
+const user = requireAuth();
+document.getElementById("userRole").innerText = user.role;
+
+openDatabase().then(loadAudit);
+
+/* ---------- LOAD AUDIT ---------- */
+async function loadAudit() {
+  const table = document.getElementById("auditTable");
+  table.innerHTML = "";
+
+  const logs = await getAllRecords("auditLogs");
+
+  logs.reverse().forEach(log => {
+    table.innerHTML += `
+      <tr>
+        <td>${new Date(log.time).toLocaleString()}</td>
+        <td>${log.user}</td>
+        <td>${log.role || "-"}</td>
+        <td>${log.action}</td>
+        <td>${log.patientId || "-"}</td>
+        <td>${log.reason || "-"}</td>
+      </tr>
+    `;
   });
-});
+}
+
+function go(page) {
+  location.href = page;
+}
 </script>
 
 </body>

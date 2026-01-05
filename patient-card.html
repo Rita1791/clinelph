@@ -1,26 +1,15 @@
-requireAuth();
-
-const patientId = sessionStorage.getItem("pid");
-
-if (!patientId) {
-  alert("No patient selected. Redirecting to Patient List.");
-  window.location.href = "patient.html";
-}
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Clinelph | Patient Card</title>
 
-  <!-- UI Framework -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/main.css">
 </head>
 
 <body>
 
-<!-- ================= TOP NAV ================= -->
 <nav class="navbar navbar-dark bg-primary px-3">
   <span class="navbar-brand">
     <img src="assets/logo.png" height="30"> Clinelph
@@ -29,288 +18,93 @@ if (!patientId) {
 </nav>
 
 <div class="container-fluid mt-3">
-<div class="row">
+  <div class="row">
 
-<!-- ================= LEFT: VISIT TIMELINE ================= -->
-<div class="col-md-3">
+    <!-- LEFT -->
+    <div class="col-md-3">
+      <div class="card mb-3">
+        <div class="card-body">
+          <h6>Patient Summary</h6>
+          <p><b>ID:</b> <span id="pid"></span></p>
+          <p><b>Status:</b> <span id="pstatus" class="status orange"></span></p>
+          <p><b>Current Visit:</b> <span id="currentVisit"></span></p>
+        </div>
+      </div>
 
-  <!-- PATIENT SUMMARY -->
-  <div class="card shadow-sm mb-3">
-    <div class="card-body">
-      <h6>Patient Summary</h6>
-      <p><b>ID:</b> <span id="pid"></span></p>
-      <p>
-        <b>Status:</b>
-        <span id="pstatus" class="status orange">Ongoing</span>
-      </p>
-      <p><b>Current Visit:</b> <span id="currentVisit"></span></p>
-    </div>
-  </div>
-
-  <!-- VISIT TIMELINE -->
-  <div class="card shadow-sm">
-    <div class="card-body">
-      <h6>Visit Timeline</h6>
-
-      <div id="timeline" class="list-group">
-        <button class="list-group-item" id="v1" onclick="openVisit(1)">
-          Visit 1 – Screening
-        </button>
-        <button class="list-group-item" id="v2" onclick="openVisit(2)">
-          Visit 2 – Baseline
-        </button>
-        <button class="list-group-item" id="v3" onclick="openVisit(3)">
-          Visit 3 – Test Treatment 1
-        </button>
-        <button class="list-group-item" id="v4" onclick="openVisit(4)">
-          Visit 4 – Baseline (Crossover)
-        </button>
-        <button class="list-group-item" id="v5" onclick="openVisit(5)">
-          Visit 5 – Test Treatment 2
-        </button>
+      <div class="card">
+        <div class="card-body">
+          <h6>Visit Timeline</h6>
+          <button class="list-group-item" onclick="openVisit(1)">Visit 1 – Screening</button>
+          <button class="list-group-item" onclick="openVisit(2)">Visit 2 – Baseline</button>
+          <button class="list-group-item" onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
+          <button class="list-group-item" onclick="openVisit(4)">Visit 4 – Baseline (Crossover)</button>
+          <button class="list-group-item" onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
+        </div>
       </div>
     </div>
-  </div>
 
+    <!-- RIGHT -->
+    <div class="col-md-9">
+      <div id="alertBox"></div>
+
+      <div id="visitPanel" class="card p-4 mb-3">
+        <p class="text-muted">Select a visit from the timeline.</p>
+      </div>
+    </div>
+
+  </div>
 </div>
 
-<!-- ================= RIGHT: VISIT CONTENT ================= -->
-<div class="col-md-9">
-
-  <div id="alertBox"></div>
-
-  <!-- VISIT PANEL -->
-  <div id="visitPanel" class="card shadow-sm p-4 mb-3">
-    <p class="text-muted">Select a visit from the timeline.</p>
-  </div>
-
-  <!-- ADVERSE EVENT -->
-  <div class="card shadow-sm p-3 mb-3">
-    <h5>Adverse Event</h5>
-
-    <label>Description</label>
-    <textarea id="aeDesc" class="form-control mb-2"></textarea>
-
-    <label>Severity</label>
-    <select id="aeSeverity" class="form-select mb-2">
-      <option>Mild</option>
-      <option>Moderate</option>
-      <option>Severe</option>
-    </select>
-
-    <button class="btn btn-outline-danger" onclick="reportAE_UI()">
-      Report Adverse Event
-    </button>
-  </div>
-
-  <!-- WITHDRAWAL -->
-  <div class="card shadow-sm p-3">
-    <h5>Withdraw Patient</h5>
-    <textarea id="withdrawReason" class="form-control mb-2"
-      placeholder="Reason is mandatory"></textarea>
-    <button class="btn btn-danger" onclick="withdraw_UI()">
-      Withdraw Patient
-    </button>
-  </div>
-
-</div>
-</div>
-</div>
-
-<!-- ================= SCRIPTS ================= -->
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/crf.js"></script>
 
 <script>
-/* ================= INIT ================= */
 requireAuth();
-const user = JSON.parse(sessionStorage.getItem("user"));
-const patientId = sessionStorage.getItem("pid");
 
-document.getElementById("pid").innerText = patientId;
+document.addEventListener("DOMContentLoaded", () => {
+  const patientId = sessionStorage.getItem("pid");
 
-openDB().then(loadPatient);
+  if (!patientId) {
+    alert("No patient selected. Redirecting.");
+    window.location.href = "patient.html";
+    return;
+  }
 
-/* ================= LOAD PATIENT ================= */
-async function loadPatient() {
+  openDB().then(() => loadPatient(patientId));
+});
+
+async function loadPatient(patientId) {
   const patients = await getAllRecords("patients");
   const visits = await getAllRecords("visits");
 
   const p = patients.find(x => x.patientId === patientId);
-  document.getElementById("currentVisit").innerText = p.currentVisit;
-
-  const statusEl = document.getElementById("pstatus");
-  statusEl.innerText = p.status;
-
-  statusEl.className = "status " +
-    (p.status === "Completed" ? "green" :
-     p.status === "Withdrawn" || p.status === "Screen Failure" ? "red" :
-     "orange");
-
-  updateTimeline(visits.filter(v => v.patientId === patientId));
-}
-
-/* ================= VISIT TIMELINE LOGIC ================= */
-function updateTimeline(visits) {
-  for (let i = 1; i <= 5; i++) {
-    const btn = document.getElementById("v" + i);
-    const visit = visits.find(v => v.visitNo === i);
-
-    btn.classList.remove("active");
-    btn.style.opacity = "1";
-
-    if (!visit) {
-      btn.style.opacity = "0.4";
-      continue;
-    }
-
-    if (visit.status === "Completed") {
-      btn.classList.add("border-success");
-    } else if (visit.status === "Failed") {
-      btn.classList.add("border-danger");
-    }
-  }
-}
-
-/* ================= VISIT ROUTER ================= */
-function openVisit(v) {
-  clearAlert();
-  if (v === 1) loadScreening();
-  if (v === 2) loadBaseline("Visit 2 – Baseline");
-  if (v === 3) loadTreatment(3);
-  if (v === 4) loadBaseline("Visit 4 – Baseline (Crossover)");
-  if (v === 5) loadTreatment(5);
-}
-
-/* ================= VISIT 1 ================= */
-function loadScreening() {
-  visitPanel.innerHTML = `
-    <h5>Visit 1 – Screening</h5>
-
-    <div class="row g-3">
-      <div class="col-md-3">
-        <label>Age</label>
-        <input id="age" class="form-control">
-      </div>
-      <div class="col-md-3">
-        <label>Gender</label>
-        <select id="gender" class="form-select">
-          <option>Male</option>
-          <option>Female</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label>Pregnancy Test</label>
-        <select id="pregnancy" class="form-select">
-          <option>Negative</option>
-          <option>Positive</option>
-        </select>
-      </div>
-      <div class="col-md-3">
-        <label>Ninhydrin OD</label>
-        <input id="ninhydrin" class="form-control">
-      </div>
-    </div>
-
-    <button class="btn btn-success mt-3" onclick="saveVisit1()">
-      Save Screening
-    </button>
-  `;
-}
-
-async function saveVisit1() {
-  const res = await saveScreeningCRF(patientId, {
-    age: +age.value,
-    gender: gender.value,
-    pregnancyResult: pregnancy.value,
-    ninhydrinOD: +ninhydrin.value,
-    inclusion: true,
-    exclusion: true,
-    screeningDate: new Date().toISOString()
-  });
-
-  res.ok
-    ? showAlert("Screening passed", true)
-    : showAlert("Screen failure: " + res.reason, false);
-
-  loadPatient();
-}
-
-/* ================= BASELINE ================= */
-function loadBaseline(title) {
-  visitPanel.innerHTML = `
-    <h5>${title}</h5>
-
-    <label>Check-in Date</label>
-    <input type="date" class="form-control mb-2">
-
-    <label>Brushing Time</label>
-    <input type="datetime-local" class="form-control mb-2">
-
-    <label>Sample Time</label>
-    <input type="datetime-local" class="form-control mb-2">
-
-    <label>Analysis Time</label>
-    <input type="datetime-local" class="form-control mb-2">
-
-    <button class="btn btn-primary">
-      Save Baseline
-    </button>
-  `;
-}
-
-/* ================= TEST TREATMENT ================= */
-function loadTreatment(v) {
-  visitPanel.innerHTML = `
-    <h5>Visit ${v} – Test Treatment</h5>
-
-    <label>Pregnancy Test (Female)</label>
-    <select class="form-select mb-2">
-      <option>Negative</option>
-      <option>Positive</option>
-    </select>
-
-    <label>Visit Date</label>
-    <input type="date" class="form-control mb-2">
-
-    <button class="btn btn-primary">
-      Save Visit ${v}
-    </button>
-  `;
-}
-
-/* ================= AE & WITHDRAW ================= */
-async function reportAE_UI() {
-  await reportAE(patientId, {
-    description: aeDesc.value,
-    severity: aeSeverity.value
-  });
-  showAlert("Adverse Event recorded", true);
-}
-
-async function withdraw_UI() {
-  if (!withdrawReason.value) {
-    showAlert("Withdrawal reason required", false);
+  if (!p) {
+    alert("Patient not found");
+    window.location.href = "patient.html";
     return;
   }
-  await withdrawPatient(patientId, withdrawReason.value);
-  showAlert("Patient withdrawn", false);
-  loadPatient();
+
+  document.getElementById("pid").innerText = p.patientId;
+  document.getElementById("currentVisit").innerText = p.currentVisit;
+
+  const s = document.getElementById("pstatus");
+  s.innerText = p.status;
+  s.className = "status " +
+    (p.status === "Completed" ? "green" :
+     p.status === "Withdrawn" ? "red" : "orange");
+
+  console.log("Patient OK:", p);
+  console.log("Visits OK:", visits.filter(v => v.patientId === patientId));
 }
 
-/* ================= UI HELPERS ================= */
-function showAlert(msg, ok) {
-  alertBox.innerHTML = `
-    <div class="alert ${ok ? "alert-success" : "alert-danger"}">
-      ${msg}
-    </div>`;
-}
-function clearAlert() {
-  alertBox.innerHTML = "";
+function openVisit(v) {
+  document.getElementById("visitPanel").innerHTML = `
+    <h5>Visit ${v}</h5>
+    <p>This visit panel is now working.</p>
+  `;
 }
 </script>
 
 </body>
 </html>
-

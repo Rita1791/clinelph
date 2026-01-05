@@ -14,42 +14,65 @@
 <div class="container">
 
 <div class="card">
-<h4>Add Patient</h4>
-<input id="age" placeholder="Age">
-<select id="gender"><option>Male</option><option>Female</option></select>
-<select id="ethnicity"><option>Asian</option><option>Caucasian</option></select>
-<button onclick="addPatient()">Add</button>
+  <h4>Add Patient</h4>
+  <input id="age" placeholder="Age">
+  <select id="gender"><option>Male</option><option>Female</option></select>
+  <select id="ethnicity"><option>Asian</option><option>Caucasian</option></select>
+  <button onclick="addPatient()">Create Patient Card</button>
 </div>
 
 <div class="card">
-<table>
-<thead><tr><th>ID</th><th>Status</th><th>Action</th></tr></thead>
-<tbody id="list"></tbody>
-</table>
+  <table>
+    <thead>
+      <tr><th>Patient ID</th><th>Status</th><th>Action</th></tr>
+    </thead>
+    <tbody id="list"></tbody>
+  </table>
 </div>
 
 </div>
 
 <script src="js/db.js"></script>
+<script src="js/visits.js"></script>
 <script src="js/auth.js"></script>
-<script>
-requireAuth(); openDatabase().then(load);
 
-function addPatient() {
-  const p = sessionStorage.getItem("studyProtocol")+"-"+Date.now();
-  addRecord("patients",{patientId:p,age:age.value,gender:gender.value,ethnicity:ethnicity.value,status:"Active"});
+<script>
+requireAuth();
+openDatabase().then(load);
+
+async function addPatient() {
+  const pid = sessionStorage.getItem("studyProtocol") + "-" + Date.now();
+
+  addRecord("patients", {
+    patientId: pid,
+    age: age.value,
+    gender: gender.value,
+    ethnicity: ethnicity.value,
+    status: "Active",
+    currentVisit: 1
+  });
+
+  await initVisits(pid);
   load();
 }
 
 async function load() {
-  list.innerHTML="";
-  (await getAllRecords("patients")).forEach(p=>{
-    list.innerHTML+=`<tr><td>${p.patientId}</td><td class="status-ok">${p.status}</td>
-    <td><button onclick="openCard('${p.patientId}')">View</button></td></tr>`;
+  list.innerHTML = "";
+  const patients = await getAllRecords("patients");
+  patients.forEach(p => {
+    list.innerHTML += `
+      <tr>
+        <td>${p.patientId}</td>
+        <td class="status-ok">${p.status}</td>
+        <td><button onclick="openCard('${p.patientId}')">Open</button></td>
+      </tr>`;
   });
 }
 
-function openCard(id){ sessionStorage.setItem("pid",id); location.href="patient-card.html"; }
+function openCard(id) {
+  sessionStorage.setItem("pid", id);
+  location.href = "patient-card.html";
+}
 </script>
 
 </body>

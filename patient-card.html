@@ -6,89 +6,128 @@
 </head>
 <body>
 
+<!-- ================= HEADER ================= -->
 <header class="app-header">
-  <img src="assets/logo.png" height="40">
-  <h3>Patient Card</h3>
+  <div class="left">
+    <img src="assets/logo.png">
+    <div>
+      <div class="title">Clinelph – Patient Card</div>
+      <div class="meta">
+        Protocol: CLP-001 |
+        Role: <span id="userRole"></span>
+      </div>
+    </div>
+  </div>
   <button onclick="logoutUser()">Logout</button>
 </header>
 
-<div class="container">
+<!-- ================= LAYOUT ================= -->
+<div class="layout">
 
-  <!-- PATIENT SUMMARY -->
-  <div class="card">
-    <h3>Patient ID: <span id="pid"></span></h3>
-    <p>Status: <span id="pstatus"></span></p>
-    <p>Current Visit: <span id="currentVisit"></span></p>
-  </div>
+  <!-- ========== SIDEBAR ========== -->
+  <aside class="sidebar">
+    <h4>Navigation</h4>
+    <button onclick="go('dashboard.html')">Dashboard</button>
+    <button onclick="go('patient.html')">Patients</button>
+    <button onclick="go('audit.html')">Audit Logs</button>
 
-  <!-- VISIT TABS -->
-  <div class="card tabs">
+    <h4>Visits</h4>
     <button onclick="openVisit(1)">Visit 1 – Screening</button>
     <button onclick="openVisit(2)">Visit 2 – Baseline</button>
     <button onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
     <button onclick="openVisit(4)">Visit 4 – Baseline</button>
     <button onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
-  </div>
+  </aside>
 
-  <!-- VISIT CONTENT -->
-  <div class="card" id="visitCard"></div>
+  <!-- ========== MAIN CONTENT ========== -->
+  <main class="main">
 
-  <!-- WITHDRAWAL -->
-  <div class="card">
-    <h4>Withdraw Patient</h4>
-    <textarea id="withdrawReason" placeholder="Reason for withdrawal"></textarea>
-    <button class="danger" onclick="withdrawPatient()">Withdraw</button>
-  </div>
+    <!-- PATIENT SUMMARY -->
+    <div class="card">
+      <h3>Patient Summary</h3>
+      <table>
+        <tr><td><b>Patient ID</b></td><td id="pid"></td></tr>
+        <tr><td><b>Status</b></td><td id="pstatus"></td></tr>
+        <tr><td><b>Current Visit</b></td><td id="currentVisit"></td></tr>
+      </table>
+    </div>
 
+    <!-- READ-ONLY NOTE -->
+    <div class="alert info" id="readOnlyNote" style="display:none;">
+      You are in review mode (QC / QA). Data entry is disabled.
+    </div>
+
+    <!-- VISIT CONTENT -->
+    <div class="card" id="visitCard">
+      <p>Select a visit from the left panel.</p>
+    </div>
+
+    <!-- WITHDRAWAL -->
+    <div class="card">
+      <h4>Patient Withdrawal</h4>
+      <label>Reason for Withdrawal</label>
+      <textarea id="withdrawReason"></textarea>
+      <button class="danger" onclick="withdrawPatient()">Deactivate Patient</button>
+    </div>
+
+  </main>
 </div>
 
+<!-- ================= SCRIPTS ================= -->
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/visits.js"></script>
 <script src="js/randomization.js"></script>
 
 <script>
-/* -------------------- INIT -------------------- */
+/* ---------- INIT ---------- */
 const user = requireAuth();
+document.getElementById("userRole").innerText = user.role;
+
 const pid = sessionStorage.getItem("pid");
 
 openDatabase().then(loadPatient);
 
 async function loadPatient() {
   const patients = await getAllRecords("patients");
-  const patient = patients.find(p => p.patientId === pid);
+  const p = patients.find(x => x.patientId === pid);
 
   document.getElementById("pid").innerText = pid;
-  document.getElementById("pstatus").innerText = patient.status;
-  document.getElementById("currentVisit").innerText = patient.currentVisit;
+  document.getElementById("pstatus").innerText = p.status;
+  document.getElementById("currentVisit").innerText = p.currentVisit;
 
-  openVisit(patient.currentVisit);
+  if (!canEdit()) {
+    document.getElementById("readOnlyNote").style.display = "block";
+  }
+
+  openVisit(p.currentVisit);
 }
 
-/* -------------------- VISIT HANDLER -------------------- */
+/* ---------- VISIT LOADER ---------- */
 async function openVisit(no) {
   const check = await canStartVisit(pid, no);
   const visit = await getVisit(pid, no);
 
   if (!check.ok) {
     visitCard.innerHTML = `
-      <h4>${visit.visitName}</h4>
-      <p class="status-error">${check.msg}</p>
+      <h3>${visit.visitName}</h3>
+      <div class="alert error">${check.msg}</div>
     `;
     return;
   }
 
-  if (no === 1) loadScreening(visit);
-  else loadTreatment(visit);
+  if (no === 1) renderScreening(visit);
+  else renderTreatment(visit);
 }
 
-/* -------------------- VISIT 1 – SCREENING -------------------- */
-function loadScreening(v) {
+/* ---------- VISIT 1: SCREENING ---------- */
+function renderScreening(v) {
   visitCard.innerHTML = `
-    <h4>Visit 1 – Screening</h4>
+    <h3>Visit 1 – Screening</h3>
 
+    <h4>Eligibility & Vitals</h4>
     <label>Screening Date & Time</label>
-    <input id="scrDate" type="datetime-local" value="${v.data.scrDate || ""}">
+    <input type="datetime-local" id="scrDate" value="${v.data.scrDate || ""}">
 
     <label>Blood Pressure</label>
     <input id="bp" value="${v.data.bp || ""}">
@@ -99,26 +138,29 @@ function loadScreening(v) {
     <label>Fasting Blood Glucose</label>
     <input id="glucose" value="${v.data.glucose || ""}">
 
+    <h4>Laboratory</h4>
     <label>Urine Pregnancy Test (Female)</label>
     <select id="preg">
       <option>Negative</option>
       <option>Positive</option>
     </select>
 
-    <label>Ninhydrin OD</label>
-    <input id="od" type="number" step="0.01" value="${v.data.od || ""}">
+    <label>Ninhydrin OD (≥ 0.35)</label>
+    <input type="number" step="0.01" id="od" value="${v.data.od || ""}">
 
-    <label>Eligibility</label>
+    <label>Eligibility Decision</label>
     <select id="elig">
       <option value="Pass">Pass</option>
       <option value="Fail">Fail</option>
     </select>
 
-    <button onclick="saveScreening()">Save Screening</button>
+    <button class="primary" onclick="saveScreening()">Save Screening Data</button>
   `;
+
+  lockIfReadOnly();
 }
 
-/* SAVE SCREENING */
+/* ---------- SAVE SCREENING ---------- */
 async function saveScreening() {
   const visits = await getAllRecords("visits");
   const v = visits.find(x => x.patientId === pid && x.visitNo === 1);
@@ -133,7 +175,11 @@ async function saveScreening() {
     eligibility: elig.value
   };
 
-  if (v.data.od <= 0.35 || v.data.eligibility === "Fail" || v.data.pregnancy === "Positive") {
+  if (
+    v.data.od <= 0.35 ||
+    v.data.eligibility === "Fail" ||
+    v.data.pregnancy === "Positive"
+  ) {
     v.status = "Failed";
     updateRecord("visits", v);
     alert("Patient failed screening");
@@ -144,55 +190,50 @@ async function saveScreening() {
   v.visitDate = scrDate.value.split("T")[0];
   updateRecord("visits", v);
 
-  const patients = await getAllRecords("patients");
-  const p = patients.find(p => p.patientId === pid);
-  p.currentVisit = 2;
-  updateRecord("patients", p);
-
-  alert("Screening passed");
-  location.reload();
+  advancePatient(2);
 }
 
-/* -------------------- VISITS 2–5 -------------------- */
-function loadTreatment(v) {
+/* ---------- VISITS 2–5 ---------- */
+function renderTreatment(v) {
   visitCard.innerHTML = `
-    <h4>${v.visitName}</h4>
+    <h3>${v.visitName}</h3>
 
-    <label>Check-in Date & Time</label>
-    <input id="checkin" type="datetime-local" value="${v.data.checkin || ""}">
+    <div class="alert info">
+      Follow protocol-defined gap before proceeding.
+    </div>
 
+    <h4>Check-In</h4>
+    <label>Date & Time</label>
+    <input type="datetime-local" id="checkin" value="${v.data.checkin || ""}">
+
+    <h4>Sample Collection</h4>
     <label>Brushing Time</label>
-    <input id="brush" type="datetime-local" value="${v.data.brush || ""}">
+    <input type="datetime-local" id="brush" value="${v.data.brush || ""}">
 
     <label>Sample Collection Time</label>
-    <input id="sample" type="datetime-local" value="${v.data.sample || ""}">
+    <input type="datetime-local" id="sample" value="${v.data.sample || ""}">
 
-    <label>Product Assigned</label>
+    <h4>Product Dispensing</h4>
+    <label>Randomization Code</label>
     <input id="product" readonly value="${v.data.product || ""}">
+    <button class="secondary" onclick="doRandomize()">Generate Randomization Code</button>
 
-    <button onclick="doRandomize()">Randomize Product</button>
+    <h4>Check-Out</h4>
+    <label>Date & Time</label>
+    <input type="datetime-local" id="checkout" value="${v.data.checkout || ""}">
 
-    <label>Breakfast (Remarks)</label>
-    <input id="breakfast" value="${v.data.breakfast || ""}">
-
-    <label>Check-out Date & Time</label>
-    <input id="checkout" type="datetime-local" value="${v.data.checkout || ""}">
-
-    <button onclick="saveTreatment(${v.visitNo})">Save Visit</button>
-
-    <p>Status:
-      <span class="${v.status === 'Completed' ? 'status-ok' : 'status-pending'}">
-        ${v.status}
-      </span>
-    </p>
+    <button class="primary" onclick="saveTreatment(${v.visitNo})">
+      Save Visit Data
+    </button>
   `;
+
+  lockIfReadOnly();
 }
 
 function doRandomize() {
   product.value = randomizeProduct();
 }
 
-/* SAVE TREATMENT VISIT */
 async function saveTreatment(no) {
   const visits = await getAllRecords("visits");
   const v = visits.find(x => x.patientId === pid && x.visitNo === no);
@@ -202,7 +243,6 @@ async function saveTreatment(no) {
     brush: brush.value,
     sample: sample.value,
     product: product.value,
-    breakfast: breakfast.value,
     checkout: checkout.value
   };
 
@@ -210,24 +250,34 @@ async function saveTreatment(no) {
   v.visitDate = checkin.value.split("T")[0];
   updateRecord("visits", v);
 
-  const patients = await getAllRecords("patients");
-  const p = patients.find(p => p.patientId === pid);
-  p.currentVisit = Math.min(no + 1, 5);
-  updateRecord("patients", p);
+  advancePatient(no + 1);
+}
 
-  alert("Visit saved");
+/* ---------- COMMON ---------- */
+async function advancePatient(nextVisit) {
+  const patients = await getAllRecords("patients");
+  const p = patients.find(x => x.patientId === pid);
+  p.currentVisit = Math.min(nextVisit, 5);
+  updateRecord("patients", p);
+  alert("Visit saved successfully");
   location.reload();
 }
 
-/* -------------------- WITHDRAWAL -------------------- */
+function lockIfReadOnly() {
+  if (!canEdit()) {
+    document.querySelectorAll("input,select,textarea,button.primary,button.secondary")
+      .forEach(e => e.disabled = true);
+  }
+}
+
 async function withdrawPatient() {
   if (!withdrawReason.value) {
-    alert("Reason required");
+    alert("Reason is mandatory");
     return;
   }
 
   const patients = await getAllRecords("patients");
-  const p = patients.find(p => p.patientId === pid);
+  const p = patients.find(x => x.patientId === pid);
   p.status = "Withdrawn";
   updateRecord("patients", p);
 
@@ -239,8 +289,12 @@ async function withdrawPatient() {
     time: new Date().toISOString()
   });
 
-  alert("Patient withdrawn");
+  alert("Patient deactivated");
   location.href = "patient.html";
+}
+
+function go(page) {
+  location.href = page;
 }
 </script>
 

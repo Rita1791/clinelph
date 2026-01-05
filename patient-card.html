@@ -7,60 +7,63 @@
 <body>
 
 <div class="container">
-<div class="card"><h3 id="pid"></h3></div>
 
 <div class="card">
-<button onclick="randomize()">Randomize</button>
-<p id="product"></p>
+  <h3>Patient: <span id="pid"></span></h3>
 </div>
 
-<div class="card">
-<textarea id="reason" placeholder="Reason for edit"></textarea>
-<button onclick="save()">Save</button>
-<button class="danger" onclick="remove()">Delete</button>
+<div class="card tabs">
+  <button onclick="loadVisit(1)">Visit 1</button>
+  <button onclick="loadVisit(2)">Visit 2</button>
+  <button onclick="loadVisit(3)">Visit 3</button>
+  <button onclick="loadVisit(4)">Visit 4</button>
+  <button onclick="loadVisit(5)">Visit 5</button>
 </div>
 
-<div class="card">
-<h4>QC / QA Comments</h4>
-<textarea id="comment"></textarea>
-<button onclick="addComment()">Add Comment</button>
-<ul id="comments"></ul>
-</div>
+<div class="card" id="visitCard"></div>
+
 </div>
 
 <script src="js/db.js"></script>
+<script src="js/visits.js"></script>
 <script src="js/auth.js"></script>
-<script src="js/randomization.js"></script>
+
 <script>
-requireAuth(); openDatabase().then(load);
-const pid=sessionStorage.getItem("pid");
+requireAuth();
+openDatabase().then(init);
 
-function load(){ document.getElementById("pid").innerText=pid; loadComments(); }
+const pid = sessionStorage.getItem("pid");
 
-let prod=null;
-function randomize(){ prod=randomizeProduct(); product.innerText=prod; }
-
-function save(){
-  if(!canEdit()||!reason.value) return alert("No permission or reason missing");
-  addRecord("auditLogs",{action:"EDIT",patientId:pid,user:getCurrentUser().email,reason:reason.value,time:new Date().toISOString()});
+function init() {
+  document.getElementById("pid").innerText = pid;
+  loadVisit(1);
 }
 
-function remove(){
-  if(!canDelete()||!reason.value) return alert("No permission or reason missing");
-  addRecord("auditLogs",{action:"DELETE",patientId:pid,user:getCurrentUser().email,reason:reason.value,time:new Date().toISOString()});
+async function loadVisit(no) {
+  const visit = await getVisit(pid, no);
+
+  visitCard.innerHTML = `
+    <h4>${visit.visitName}</h4>
+
+    <label>Visit Notes</label>
+    <textarea id="notes">${visit.data.notes || ""}</textarea>
+
+    <button onclick="saveVisit(${no})">Save Visit</button>
+    <p>Status:
+      <span class="${visit.status === 'Completed' ? 'status-ok':'status-pending'}">
+        ${visit.status}
+      </span>
+    </p>
+  `;
 }
 
-async function loadComments(){
-  comments.innerHTML="";
-  (await getAllRecords("comments")).filter(c=>c.patientId===pid)
-  .forEach(c=>comments.innerHTML+=`<li>${c.user}: ${c.text}</li>`);
-}
-
-function addComment(){
-  const r=getCurrentUser().role;
-  if(!["QC","QA","PI"].includes(r)) return alert("No permission");
-  addRecord("comments",{patientId:pid,user:getCurrentUser().email,role:r,text:comment.value,time:new Date().toISOString()});
-  comment.value=""; loadComments();
+async function saveVisit(no) {
+  const visit = await getVisit(pid, no);
+  visit.data.notes = document.getElementById("notes").value;
+  visit.status = "Completed";
+  updateRecord("visits", visit);
+  alert("Visit saved");
+  loadVisit(no);
 }
 </script>
 

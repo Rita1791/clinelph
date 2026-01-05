@@ -1,45 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Clinelph | Login</title>
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#0b5ed7">
+  <title>Clinelph Login</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-<header class="app-header">
-  <img src="assets/logo.png" height="40">
-  <h2>Clinelph</h2>
+<header>
+  <img src="assets/logo.png">
+  <h3>Clinelph</h3>
 </header>
 
 <div class="container card">
-  <h3>Login</h3>
-
-  <label>Email</label>
-  <input id="email" type="email">
-
-  <label>Role</label>
+  <label>Select Role</label>
   <select id="role">
     <option>DataEntry</option>
     <option>CRC</option>
-    <option>Phlebotomist</option>
-    <option>OA</option>
     <option>QC</option>
     <option>QA</option>
-    <option>PI</option>
   </select>
-
   <button onclick="login()">Login</button>
 </div>
 
 <script src="js/auth.js"></script>
 <script>
 function login() {
-  if (!email.value) return alert("Email required");
-  loginUser(email.value, role.value);
-  sessionStorage.setItem("studyProtocol", "CLP-001");
-  window.location.href = "dashboard.html";
+  loginUser(role.value);
+  location.href = "dashboard.html";
 }
 </script>
 

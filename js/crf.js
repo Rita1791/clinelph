@@ -86,3 +86,58 @@ async function withdrawPatient(patientId, reason) {
     date: new Date().toISOString()
   });
 }
+
+/* ================================
+   VISIT 2 – BASELINE (CHECK-IN / CHECK-OUT)
+================================ */
+
+async function saveBaselineCheckIn(patientId, form) {
+  const visits = await getAllRecords("visits");
+  const v2 = visits.find(v => v.patientId === patientId && v.visitNo === 2);
+
+  // 12-hour gap between brushing & sample
+  const gapHours =
+    (new Date(form.sampleTime) - new Date(form.brushingTime)) / 36e5;
+
+  if (gapHours < 12) {
+    return { ok: false, reason: "12-hour gap required between brushing and sample" };
+  }
+
+  v2.data.checkIn = form;
+  v2.status = "Check-in Completed";
+  await updateRecord("visits", v2);
+
+  return { ok: true };
+}
+
+async function saveBaselineCheckOut(patientId, form) {
+  const visits = await getAllRecords("visits");
+  const v2 = visits.find(v => v.patientId === patientId && v.visitNo === 2);
+
+  // 30-minute gap after sample collection
+  const gapMinutes =
+    (new Date(form.analysisTime) - new Date(form.sampleCollectionTime)) / 60000;
+
+  if (gapMinutes < 30) {
+    return { ok: false, reason: "30-minute gap required before analysis" };
+  }
+
+  // Randomization
+  form.productCode = Math.random() > 0.5 ? "A19" : "K87";
+
+  v2.data.checkOut = form;
+  v2.status = "Completed";
+  v2.visitDate = form.checkOutDate;
+
+  await updateRecord("visits", v2);
+
+  // Move patient to Visit 3
+  const patients = await getAllRecords("patients");
+  const p = patients.find(p => p.patientId === patientId);
+  p.currentVisit = 3;
+  p.status = "Ongoing";
+  await updateRecord("patients", p);
+
+  return { ok: true };
+}
+

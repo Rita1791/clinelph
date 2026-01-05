@@ -9,15 +9,15 @@
 <div class="container">
 
 <div class="card">
-  <h3>Patient: <span id="pid"></span></h3>
+  <h3>Patient ID: <span id="pid"></span></h3>
 </div>
 
 <div class="card tabs">
-  <button onclick="loadVisit(1)">Visit 1</button>
-  <button onclick="loadVisit(2)">Visit 2</button>
-  <button onclick="loadVisit(3)">Visit 3</button>
-  <button onclick="loadVisit(4)">Visit 4</button>
-  <button onclick="loadVisit(5)">Visit 5</button>
+  <button onclick="openVisit(1)">Visit 1 – Screening</button>
+  <button onclick="openVisit(2)">Visit 2 – Baseline</button>
+  <button onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
+  <button onclick="openVisit(4)">Visit 4 – Baseline</button>
+  <button onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
 </div>
 
 <div class="card" id="visitCard"></div>
@@ -30,40 +30,117 @@
 
 <script>
 requireAuth();
-openDatabase().then(init);
+openDatabase().then(() => {
+  document.getElementById("pid").innerText = pid;
+  openVisit(1);
+});
 
 const pid = sessionStorage.getItem("pid");
 
-function init() {
-  document.getElementById("pid").innerText = pid;
-  loadVisit(1);
-}
-
-async function loadVisit(no) {
+/* ---------- VISIT LOADER ---------- */
+async function openVisit(no) {
+  const check = await canStartVisit(pid, no);
   const visit = await getVisit(pid, no);
 
+  if (!check.ok) {
+    visitCard.innerHTML = `
+      <h4>${visit.visitName}</h4>
+      <p class="status-error">${check.msg}</p>
+    `;
+    return;
+  }
+
+  if (no === 1) loadScreening(visit);
+  else loadTreatment(visit);
+}
+
+/* ---------- VISIT 1: SCREENING ---------- */
+function loadScreening(v) {
   visitCard.innerHTML = `
-    <h4>${visit.visitName}</h4>
+    <h4>Screening Visit</h4>
 
-    <label>Visit Notes</label>
-    <textarea id="notes">${visit.data.notes || ""}</textarea>
+    <label>Blood Pressure</label>
+    <input id="bp" value="${v.data.bp || ""}">
 
-    <button onclick="saveVisit(${no})">Save Visit</button>
+    <label>Pulse</label>
+    <input id="pulse" value="${v.data.pulse || ""}">
+
+    <label>Ninhydrin OD</label>
+    <input id="od" type="number" step="0.01" value="${v.data.od || ""}">
+
+    <label>Eligibility</label>
+    <select id="elig">
+      <option value="Yes">Eligible</option>
+      <option value="No">Not Eligible</option>
+    </select>
+
+    <button onclick="saveScreening()">Save Screening</button>
+  `;
+}
+
+async function saveScreening() {
+  const v = await getVisit(pid, 1);
+
+  v.data.bp = bp.value;
+  v.data.pulse = pulse.value;
+  v.data.od = parseFloat(od.value);
+  v.data.eligibility = elig.value;
+
+  if (v.data.od <= 0.35 || v.data.eligibility === "No") {
+    alert("Patient failed screening");
+    v.status = "Failed";
+  } else {
+    v.status = "Completed";
+    v.visitDate = today();
+  }
+
+  updateRecord("visits", v);
+  alert("Screening saved");
+}
+
+/* ---------- VISIT 2–5: TREATMENT ---------- */
+function loadTreatment(v) {
+  visitCard.innerHTML = `
+    <h4>${v.visitName}</h4>
+
+    <label>Check-in Time</label>
+    <input id="checkin" type="datetime-local" value="${v.data.checkin || ""}">
+
+    <label>Product Assigned</label>
+    <input id="product" value="${v.data.product || ""}" readonly>
+
+    <button onclick="assignProduct()">Randomize Product</button>
+
+    <button onclick="saveTreatment()">Save Visit</button>
+
     <p>Status:
-      <span class="${visit.status === 'Completed' ? 'status-ok':'status-pending'}">
-        ${visit.status}
+      <span class="${v.status === 'Completed' ? 'status-ok' : 'status-pending'}">
+        ${v.status}
       </span>
     </p>
   `;
 }
 
-async function saveVisit(no) {
-  const visit = await getVisit(pid, no);
-  visit.data.notes = document.getElementById("notes").value;
-  visit.status = "Completed";
-  updateRecord("visits", visit);
+function assignProduct() {
+  const p = Math.random() > 0.5 ? "A19" : "K87";
+  document.getElementById("product").value = p;
+}
+
+async function saveTreatment() {
+  const v = await getVisit(pid, vno());
+
+  v.data.checkin = checkin.value;
+  v.data.product = product.value;
+  v.status = "Completed";
+  v.visitDate = today();
+
+  updateRecord("visits", v);
   alert("Visit saved");
-  loadVisit(no);
+}
+
+function vno() {
+  return [...document.querySelectorAll(".tabs button")]
+    .findIndex(b => b.classList.contains("active")) + 1;
 }
 </script>
 

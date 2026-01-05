@@ -12,20 +12,28 @@
 </nav>
 
 <div class="container mt-4">
-  <div class="card p-3 mb-3">
-    <h5>Create Patient</h5>
-    <div class="row g-2">
-      <div class="col"><input id="age" class="form-control" placeholder="Age"></div>
-      <div class="col"><select id="gender" class="form-select"><option>Male</option><option>Female</option></select></div>
-      <div class="col"><input id="ethnicity" class="form-control" placeholder="Ethnicity"></div>
-      <div class="col"><button class="btn btn-primary" onclick="register()">Generate</button></div>
+
+<div class="card p-3 mb-3">
+  <h5>Create Patient</h5>
+  <div class="row g-2">
+    <div class="col"><input id="age" class="form-control" placeholder="Age"></div>
+    <div class="col">
+      <select id="gender" class="form-select">
+        <option>Male</option><option>Female</option>
+      </select>
+    </div>
+    <div class="col"><input id="ethnicity" class="form-control" placeholder="Ethnicity"></div>
+    <div class="col">
+      <button class="btn btn-primary" onclick="register()">Generate</button>
     </div>
   </div>
+</div>
 
-  <table class="table table-sm">
-    <thead><tr><th>ID</th><th>Status</th><th></th></tr></thead>
-    <tbody id="plist"></tbody>
-  </table>
+<table class="table table-sm">
+  <thead><tr><th>ID</th><th>Status</th><th></th></tr></thead>
+  <tbody id="plist"></tbody>
+</table>
+
 </div>
 
 <script src="js/auth.js"></script>
@@ -36,7 +44,13 @@ requireAuth();
 openDB().then(load);
 
 async function register() {
+  if (age.value < 18 || age.value > 60) {
+    alert("Age must be between 18 and 60");
+    return;
+  }
+
   const pid = "CLP-" + Date.now();
+
   await addRecord("patients", {
     patientId: pid,
     age: age.value,
@@ -45,6 +59,7 @@ async function register() {
     status: "Screening",
     currentVisit: 1
   });
+
   await initVisits(pid);
   load();
 }
@@ -57,8 +72,10 @@ async function load() {
       <tr>
         <td>${p.patientId}</td>
         <td>${p.status}</td>
-        <td><button class="btn btn-sm btn-outline-primary"
-          onclick="openCard('${p.patientId}')">Open</button></td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary"
+            onclick="openCard('${p.patientId}')">Open</button>
+        </td>
       </tr>`;
   });
 }

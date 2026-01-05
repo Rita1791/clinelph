@@ -22,3 +22,4 @@ async function getVisit(patientId, visitNo) {
   const all = await getAll("visits");
   return all.find(v => v.patientId === patientId && v.visitNo === visitNo);
 }
+

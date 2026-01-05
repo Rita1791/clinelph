@@ -2,45 +2,51 @@
    VISIT 1 – SCREENING LOGIC (CRF)
 ================================ */
 
-async function saveScreeningCRF(patientId, form) {
+async function saveScreeningCRF(patientId, data) {
+  if (data.age < 18 || data.age > 60)
+    return { ok: false, reason: "Age not eligible" };
+
+  if (data.gender === "Female" && data.pregnancyResult === "Positive")
+    return { ok: false, reason: "Pregnancy positive" };
+
+  if (data.ninhydrinOD <= 0.35)
+    return { ok: false, reason: "Ninhydrin below cutoff" };
+
   const patients = await getAllRecords("patients");
-  const patient = patients.find(p => p.patientId === patientId);
-
-  // AGE CHECK
-  if (form.age < 18 || form.age > 60) {
-    return failScreening(patientId, "Age not between 18–60");
-  }
-
-  // INCLUSION / EXCLUSION
-  if (!form.inclusion || !form.exclusion) {
-    return failScreening(patientId, "Inclusion/Exclusion criteria failed");
-  }
-
-  // PREGNANCY CHECK
-  if (form.gender === "Female" && form.pregnancyResult === "Positive") {
-    return failScreening(patientId, "Positive pregnancy test");
-  }
-
-  // NINHYDRIN
-  if (form.ninhydrinOD <= 0.35) {
-    return failScreening(patientId, "Ninhydrin OD ≤ 0.35");
-  }
-
-  // SAVE VISIT DATA
   const visits = await getAllRecords("visits");
-  const v1 = visits.find(v => v.patientId === patientId && v.visitNo === 1);
 
-  v1.data = form;
-  v1.status = "Completed";
-  v1.visitDate = form.screeningDate;
-
-  await updateRecord("visits", v1);
-
-  patient.status = "Eligible";
+  const patient = patients.find(p => p.patientId === patientId);
+  patient.status = "Ongoing";
   patient.currentVisit = 2;
   await updateRecord("patients", patient);
 
+  const v1 = visits.find(v => v.patientId === patientId && v.visitNo === 1);
+  v1.status = "Completed";
+  v1.data = data;
+  await updateRecord("visits", v1);
+
   return { ok: true };
+}
+
+async function reportAE(patientId, data) {
+  await addRecord("adverseEvents", {
+    patientId,
+    ...data,
+    date: new Date().toISOString()
+  });
+}
+
+async function withdrawPatient(patientId, reason) {
+  const patients = await getAllRecords("patients");
+  const patient = patients.find(p => p.patientId === patientId);
+  patient.status = "Withdrawn";
+  await updateRecord("patients", patient);
+
+  await addRecord("withdrawals", {
+    patientId,
+    reason,
+    date: new Date().toISOString()
+  });
 }
 
 /* -------- SCREEN FAILURE -------- */

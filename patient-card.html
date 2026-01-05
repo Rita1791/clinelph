@@ -6,11 +6,9 @@
 </head>
 <body>
 
-<header class="app-header">
-  <div>
-    <b>Clinelph – Patient Card</b><br>
-    Protocol: CLP-001 | Role: <span id="role"></span>
-  </div>
+<header>
+  <img src="assets/logo.png">
+  <b>Clinelph – Patient Screening</b>
   <button onclick="logout()">Logout</button>
 </header>
 
@@ -18,25 +16,61 @@
 
 <div class="card">
   <h3>Patient Summary</h3>
-  <p><b>ID:</b> <span id="pid"></span></p>
-  <p><b>Status:</b> <span id="pstatus"></span></p>
+  <p>ID: <span id="pid"></span></p>
+  <p>Status: <span id="status"></span></p>
 </div>
 
 <div class="card">
-  <h3>Visits</h3>
-  <button onclick="openVisit(1)">Visit 1 – Screening</button>
-  <button onclick="openVisit(2)">Visit 2 – Baseline</button>
-  <button onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
-  <button onclick="openVisit(4)">Visit 4 – Baseline</button>
-  <button onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
-</div>
+  <h3>Visit 1 – Screening</h3>
 
-<div id="alert"></div>
-<div id="visitPanel" class="card"></div>
+  <label>Screening Date & Time</label>
+  <input type="datetime-local" id="screeningDate">
+
+  <label>Age</label>
+  <input type="number" id="age">
+
+  <label>Gender</label>
+  <select id="gender">
+    <option>Male</option>
+    <option>Female</option>
+  </select>
+
+  <label>Inclusion Criteria</label>
+  <select id="inclusion">
+    <option value="true">Pass</option>
+    <option value="false">Fail</option>
+  </select>
+
+  <label>Exclusion Criteria</label>
+  <select id="exclusion">
+    <option value="true">Pass</option>
+    <option value="false">Fail</option>
+  </select>
+
+  <label>Blood Pressure</label>
+  <input id="bp">
+
+  <label>Pulse</label>
+  <input id="pulse">
+
+  <label>Fasting Glucose</label>
+  <input id="glucose">
+
+  <label>Urine Pregnancy Test Result</label>
+  <select id="pregnancyResult">
+    <option>Negative</option>
+    <option>Positive</option>
+  </select>
+
+  <label>Ninhydrin OD</label>
+  <input type="number" step="0.01" id="ninhydrinOD">
+
+  <button onclick="submitScreening()">Save Screening</button>
+</div>
 
 <div class="card">
   <h3>Adverse Event</h3>
-  <textarea id="aeDesc" placeholder="Describe event"></textarea>
+  <textarea id="aeDesc" placeholder="Describe adverse event"></textarea>
   <select id="aeSeverity">
     <option>Mild</option>
     <option>Moderate</option>
@@ -47,157 +81,61 @@
 
 <div class="card">
   <h3>Withdrawal</h3>
-  <textarea id="wdReason" placeholder="Reason for withdrawal"></textarea>
+  <textarea id="withdrawReason"></textarea>
   <button class="danger" onclick="withdraw()">Withdraw Patient</button>
 </div>
+
+<div id="msg"></div>
 
 </div>
 
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
-<script src="js/visits.js"></script>
+<script src="js/crf.js"></script>
 
 <script>
 requireAuth();
-document.getElementById("role").innerText = getUser().role;
-
-const patientId = sessionStorage.getItem("pid");
-document.getElementById("pid").innerText = patientId;
+const pid = sessionStorage.getItem("pid");
+document.getElementById("pid").innerText = pid;
 
 openDB().then(loadPatient);
 
 async function loadPatient() {
   const patients = await getAllRecords("patients");
-  const p = patients.find(x => x.patientId === patientId);
-  document.getElementById("pstatus").innerText = p.status;
+  const p = patients.find(x => x.patientId === pid);
+  document.getElementById("status").innerText = p.status;
 }
 
-/* ================= VISITS ================= */
-async function openVisit(no) {
-  const check = await canStartVisit(patientId, no);
-  if (!check.ok) {
-    alertBox(check.msg);
-    return;
-  }
-
-  if (no === 1) loadScreening();
-  else loadTreatment(no);
-}
-
-/* ---- Screening ---- */
-function loadScreening() {
-  visitPanel.innerHTML = `
-    <h3>Visit 1 – Screening</h3>
-
-    <label>Age</label><input id="age">
-    <label>Gender</label>
-    <select id="gender"><option>Male</option><option>Female</option></select>
-
-    <label>Inclusion Criteria</label>
-    <select id="incl"><option value="true">Pass</option><option value="false">Fail</option></select>
-
-    <label>Exclusion Criteria</label>
-    <select id="excl"><option value="true">Pass</option><option value="false">Fail</option></select>
-
-    <label>Pregnancy Test</label>
-    <select id="preg"><option>Negative</option><option>Positive</option></select>
-
-    <label>Ninhydrin OD</label><input id="nin" type="number" step="0.01">
-
-    <button onclick="saveScreening()">Save Screening</button>
-  `;
-}
-
-async function saveScreening() {
-  const data = {
+async function submitScreening() {
+  const form = {
+    screeningDate: screeningDate.value,
     age: +age.value,
     gender: gender.value,
-    inclusion: incl.value === "true",
-    exclusion: excl.value === "true",
-    pregnancy: preg.value,
-    ninhydrin: +nin.value
+    inclusion: inclusion.value === "true",
+    exclusion: exclusion.value === "true",
+    bp: bp.value,
+    pulse: pulse.value,
+    glucose: glucose.value,
+    pregnancyResult: pregnancyResult.value,
+    ninhydrinOD: +ninhydrinOD.value
   };
 
-  const result = evaluateScreening(data);
-
-  const visit = await getVisit(patientId, 1);
-  visit.data = data;
-  visit.visitDate = new Date().toISOString().split("T")[0];
-
-  if (result !== "Eligible") {
-    visit.status = "Failed";
-    await updateRecord("visits", visit);
-    alertBox("Screen Failure: " + result);
-    return;
-  }
-
-  visit.status = "Completed";
-  await updateRecord("visits", visit);
-  alertBox("Screening passed");
+  const res = await saveScreeningCRF(pid, form);
+  document.getElementById("msg").innerText =
+    res.ok ? "Screening Passed" : "Screen Failed: " + res.reason;
 }
 
-/* ---- Treatment Visits ---- */
-async function loadTreatment(no) {
-  visitPanel.innerHTML = `
-    <h3>${VISIT_PROTOCOL[no].name}</h3>
-    <label>Check-in Date</label><input id="cin" type="date">
-    <label>Brushing Time</label><input id="brush" type="datetime-local">
-    <label>Sample Time</label><input id="sample" type="datetime-local">
-    <label>Product Code</label><input id="prod" readonly>
-    <button onclick="rand()">Randomize</button>
-    <label>Check-out</label><input id="cout" type="datetime-local">
-    <button onclick="saveTreatment(${no})">Save Visit</button>
-  `;
-}
-
-async function rand() {
-  const visits = await getVisitsForPatient(patientId);
-  const prev = visits.find(v => v.visitNo < 3 && v.data.product);
-  prod.value = randomizeProduct(prev?.data?.product);
-}
-
-async function saveTreatment(no) {
-  const visit = await getVisit(patientId, no);
-  visit.data = {
-    checkin: cin.value,
-    brushing: brush.value,
-    sample: sample.value,
-    product: prod.value,
-    checkout: cout.value
-  };
-  visit.status = "Completed";
-  visit.visitDate = cin.value;
-  await updateRecord("visits", visit);
-  alertBox("Visit saved");
-}
-
-/* ================= AE ================= */
 async function saveAE() {
-  await addRecord("adverseEvents", {
-    patientId,
-    desc: aeDesc.value,
-    severity: aeSeverity.value,
-    time: new Date().toISOString()
+  await reportAE(pid, {
+    description: aeDesc.value,
+    severity: aeSeverity.value
   });
-  alertBox("Adverse Event recorded");
+  alert("AE recorded");
 }
 
-/* ================= WITHDRAW ================= */
 async function withdraw() {
-  if (!wdReason.value) {
-    alertBox("Reason required");
-    return;
-  }
-  const patients = await getAllRecords("patients");
-  const p = patients.find(x => x.patientId === patientId);
-  p.status = "Withdrawn";
-  await updateRecord("patients", p);
-  alertBox("Patient withdrawn");
-}
-
-function alertBox(msg) {
-  document.getElementById("alert").innerHTML =
-    `<div class="alert error">${msg}</div>`;
+  await withdrawPatient(pid, withdrawReason.value);
+  alert("Patient withdrawn");
 }
 </script>
 

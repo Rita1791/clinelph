@@ -1,8 +1,9 @@
 let db;
 
 function openDB() {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const req = indexedDB.open("clinelphDB", 1);
+
     req.onupgradeneeded = e => {
       db = e.target.result;
       db.createObjectStore("patients", { keyPath: "patientId" });
@@ -11,6 +12,7 @@ function openDB() {
       db.createObjectStore("withdrawals", { keyPath: "id", autoIncrement: true });
       db.createObjectStore("auditLogs", { keyPath: "id", autoIncrement: true });
     };
+
     req.onsuccess = e => {
       db = e.target.result;
       resolve();

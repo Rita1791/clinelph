@@ -87,3 +87,58 @@ function openCard(pid) {
 </script>
 </body>
 </html>
+<script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/protocol.js"></script>
+
+<script>
+requireAuth();
+
+openDB().then(loadPatients);
+
+async function register() {
+  if (age.value < 18 || age.value > 60) {
+    alert("Age must be between 18 and 60");
+    return;
+  }
+
+  const pid = "CLP-" + Date.now();
+
+  await addRecord("patients", {
+    patientId: pid,
+    age: age.value,
+    gender: gender.value,
+    ethnicity: ethnicity.value,
+    status: "Screening",
+    currentVisit: 1
+  });
+
+  await initVisits(pid);
+  loadPatients();
+}
+
+async function loadPatients() {
+  plist.innerHTML = "";
+  const pts = await getAllRecords("patients");
+
+  pts.forEach(p => {
+    plist.innerHTML += `
+      <tr>
+        <td>${p.patientId}</td>
+        <td>${p.status}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary"
+            onclick="openCard('${p.patientId}')">
+            Open
+          </button>
+        </td>
+      </tr>`;
+  });
+}
+
+function openCard(pid) {
+  sessionStorage.setItem("pid", pid);
+  window.location.href = "patient-card.html";
+}
+</script>
+

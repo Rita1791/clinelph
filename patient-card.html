@@ -6,107 +6,150 @@
 </head>
 <body>
 
+<!-- ================= HEADER ================= -->
 <header>
   <img src="assets/logo.png">
-  <b>Clinelph – Patient Screening</b>
-  <button onclick="logout()">Logout</button>
+  <b>Clinelph – Patient Card</b>
+  <span style="margin-left:20px;">Protocol: CLP-001</span>
+  <button style="float:right;" onclick="logout()">Logout</button>
 </header>
 
 <div class="container">
 
+<!-- ================= PATIENT SUMMARY ================= -->
 <div class="card">
   <h3>Patient Summary</h3>
-  <p>ID: <span id="pid"></span></p>
-  <p>Status: <span id="status"></span></p>
+  <p><b>Patient ID:</b> <span id="pid"></span></p>
+  <p><b>Status:</b> <span id="pstatus"></span></p>
+  <p><b>Current Visit:</b> <span id="currentVisit"></span></p>
 </div>
 
+<!-- ================= VISIT NAVIGATION ================= -->
 <div class="card">
-  <h3>Visit 1 – Screening</h3>
-
-  <label>Screening Date & Time</label>
-  <input type="datetime-local" id="screeningDate">
-
-  <label>Age</label>
-  <input type="number" id="age">
-
-  <label>Gender</label>
-  <select id="gender">
-    <option>Male</option>
-    <option>Female</option>
-  </select>
-
-  <label>Inclusion Criteria</label>
-  <select id="inclusion">
-    <option value="true">Pass</option>
-    <option value="false">Fail</option>
-  </select>
-
-  <label>Exclusion Criteria</label>
-  <select id="exclusion">
-    <option value="true">Pass</option>
-    <option value="false">Fail</option>
-  </select>
-
-  <label>Blood Pressure</label>
-  <input id="bp">
-
-  <label>Pulse</label>
-  <input id="pulse">
-
-  <label>Fasting Glucose</label>
-  <input id="glucose">
-
-  <label>Urine Pregnancy Test Result</label>
-  <select id="pregnancyResult">
-    <option>Negative</option>
-    <option>Positive</option>
-  </select>
-
-  <label>Ninhydrin OD</label>
-  <input type="number" step="0.01" id="ninhydrinOD">
-
-  <button onclick="submitScreening()">Save Screening</button>
+  <h3>Visits</h3>
+  <button onclick="openVisit(1)">Visit 1 – Screening</button>
+  <button onclick="openVisit(2)">Visit 2 – Baseline</button>
 </div>
 
+<!-- ================= ALERT ================= -->
+<div id="alertBox"></div>
+
+<!-- ================= VISIT PANEL ================= -->
+<div id="visitPanel" class="card">
+  <p>Select a visit to begin.</p>
+</div>
+
+<!-- ================= ADVERSE EVENT ================= -->
 <div class="card">
   <h3>Adverse Event</h3>
-  <textarea id="aeDesc" placeholder="Describe adverse event"></textarea>
+
+  <label>Event Description</label>
+  <textarea id="aeDesc"></textarea>
+
+  <label>Severity</label>
   <select id="aeSeverity">
     <option>Mild</option>
     <option>Moderate</option>
     <option>Severe</option>
   </select>
-  <button onclick="saveAE()">Report AE</button>
+
+  <button onclick="reportAE_UI()">Report Adverse Event</button>
 </div>
 
+<!-- ================= WITHDRAWAL ================= -->
 <div class="card">
   <h3>Withdrawal</h3>
+
+  <label>Reason for Withdrawal</label>
   <textarea id="withdrawReason"></textarea>
-  <button class="danger" onclick="withdraw()">Withdraw Patient</button>
+
+  <button class="danger" onclick="withdraw_UI()">Withdraw Patient</button>
 </div>
 
-<div id="msg"></div>
-
 </div>
 
+<!-- ================= SCRIPTS ================= -->
 <script src="js/auth.js"></script>
 <script src="js/db.js"></script>
 <script src="js/crf.js"></script>
 
 <script>
+/* ================= INIT ================= */
 requireAuth();
-const pid = sessionStorage.getItem("pid");
-document.getElementById("pid").innerText = pid;
+
+const patientId = sessionStorage.getItem("pid");
+document.getElementById("pid").innerText = patientId;
 
 openDB().then(loadPatient);
 
 async function loadPatient() {
   const patients = await getAllRecords("patients");
-  const p = patients.find(x => x.patientId === pid);
-  document.getElementById("status").innerText = p.status;
+  const p = patients.find(x => x.patientId === patientId);
+
+  document.getElementById("pstatus").innerText = p.status;
+  document.getElementById("currentVisit").innerText = p.currentVisit;
 }
 
-async function submitScreening() {
+/* ================= VISIT OPEN ================= */
+async function openVisit(no) {
+  clearAlert();
+
+  if (no === 1) loadVisit1();
+  if (no === 2) loadVisit2();
+}
+
+/* ================= VISIT 1 – SCREENING ================= */
+function loadVisit1() {
+  visitPanel.innerHTML = `
+    <h3>Visit 1 – Screening</h3>
+
+    <label>Screening Date & Time</label>
+    <input type="datetime-local" id="screeningDate">
+
+    <label>Age</label>
+    <input type="number" id="age">
+
+    <label>Gender</label>
+    <select id="gender">
+      <option>Male</option>
+      <option>Female</option>
+    </select>
+
+    <label>Inclusion Criteria</label>
+    <select id="inclusion">
+      <option value="true">Pass</option>
+      <option value="false">Fail</option>
+    </select>
+
+    <label>Exclusion Criteria</label>
+    <select id="exclusion">
+      <option value="true">Pass</option>
+      <option value="false">Fail</option>
+    </select>
+
+    <label>Blood Pressure</label>
+    <input id="bp">
+
+    <label>Pulse</label>
+    <input id="pulse">
+
+    <label>Fasting Blood Glucose</label>
+    <input id="glucose">
+
+    <label>Urine Pregnancy Test</label>
+    <select id="pregnancy">
+      <option>Negative</option>
+      <option>Positive</option>
+    </select>
+
+    <label>Ninhydrin OD (> 0.35)</label>
+    <input type="number" step="0.01" id="ninhydrin">
+
+    <button onclick="saveVisit1()">Save Screening</button>
+  `;
+}
+
+async function saveVisit1() {
   const form = {
     screeningDate: screeningDate.value,
     age: +age.value,
@@ -116,26 +159,132 @@ async function submitScreening() {
     bp: bp.value,
     pulse: pulse.value,
     glucose: glucose.value,
-    pregnancyResult: pregnancyResult.value,
-    ninhydrinOD: +ninhydrinOD.value
+    pregnancyResult: pregnancy.value,
+    ninhydrinOD: +ninhydrin.value
   };
 
-  const res = await saveScreeningCRF(pid, form);
-  document.getElementById("msg").innerText =
-    res.ok ? "Screening Passed" : "Screen Failed: " + res.reason;
+  const res = await saveScreeningCRF(patientId, form);
+
+  if (res.ok) {
+    showAlert("Screening Passed. Patient Eligible.", true);
+    loadPatient();
+  } else {
+    showAlert("Screen Failure: " + res.reason, false);
+    loadPatient();
+  }
 }
 
-async function saveAE() {
-  await reportAE(pid, {
+/* ================= VISIT 2 – BASELINE ================= */
+function loadVisit2() {
+  visitPanel.innerHTML = `
+    <h3>Visit 2 – Baseline</h3>
+
+    <h4>Day 1 – Check-in</h4>
+
+    <label>Check-in Date & Time</label>
+    <input type="datetime-local" id="checkInDT">
+
+    <label>Vitals (BP / Pulse)</label>
+    <input id="vitals">
+
+    <label>Oral Examination</label>
+    <input id="oralExam">
+
+    <label>Dinner Date & Time</label>
+    <input type="datetime-local" id="dinnerDT">
+
+    <label>Brushing Time</label>
+    <input type="datetime-local" id="brushingTime">
+
+    <label>Sample Collection Time</label>
+    <input type="datetime-local" id="sampleTime">
+
+    <button onclick="saveV2CheckIn_UI()">Save Check-in</button>
+
+    <hr>
+
+    <h4>Day 2 – Check-out</h4>
+
+    <label>Mouth Air Sample Collection Time</label>
+    <input type="datetime-local" id="sampleCollectionTime">
+
+    <label>Analysis Time</label>
+    <input type="datetime-local" id="analysisTime">
+
+    <label>VSC Values (MM / H2S / ZnS / Total)</label>
+    <input id="vsc">
+
+    <label>Breakfast Remarks</label>
+    <input id="breakfast">
+
+    <label>Check-out Date</label>
+    <input type="date" id="checkOutDate">
+
+    <button onclick="saveV2CheckOut_UI()">Save Check-out</button>
+  `;
+}
+
+async function saveV2CheckIn_UI() {
+  const res = await saveBaselineCheckIn(patientId, {
+    checkInDT: checkInDT.value,
+    vitals: vitals.value,
+    oralExam: oralExam.value,
+    dinnerDT: dinnerDT.value,
+    brushingTime: brushingTime.value,
+    sampleTime: sampleTime.value
+  });
+
+  res.ok
+    ? showAlert("Baseline Check-in saved.", true)
+    : showAlert(res.reason, false);
+}
+
+async function saveV2CheckOut_UI() {
+  const res = await saveBaselineCheckOut(patientId, {
+    sampleCollectionTime: sampleCollectionTime.value,
+    analysisTime: analysisTime.value,
+    vsc: vsc.value,
+    breakfast: breakfast.value,
+    checkOutDate: checkOutDate.value
+  });
+
+  res.ok
+    ? showAlert("Visit 2 Completed. Randomization Done.", true)
+    : showAlert(res.reason, false);
+
+  loadPatient();
+}
+
+/* ================= AE ================= */
+async function reportAE_UI() {
+  await reportAE(patientId, {
     description: aeDesc.value,
     severity: aeSeverity.value
   });
-  alert("AE recorded");
+  showAlert("Adverse Event reported.", true);
 }
 
-async function withdraw() {
-  await withdrawPatient(pid, withdrawReason.value);
-  alert("Patient withdrawn");
+/* ================= WITHDRAW ================= */
+async function withdraw_UI() {
+  if (!withdrawReason.value) {
+    showAlert("Withdrawal reason is mandatory.", false);
+    return;
+  }
+
+  await withdrawPatient(patientId, withdrawReason.value);
+  showAlert("Patient withdrawn from study.", false);
+  loadPatient();
+}
+
+/* ================= HELPERS ================= */
+function showAlert(msg, ok) {
+  alertBox.innerHTML = `
+    <div class="${ok ? "ok" : "fail"}">${msg}</div>
+  `;
+}
+
+function clearAlert() {
+  alertBox.innerHTML = "";
 }
 </script>
 

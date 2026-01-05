@@ -1,33 +1,231 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Clinelph Login</title>
+  <title>Clinelph | Patient Card</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
 <header>
   <img src="assets/logo.png">
-  <h3>Clinelph</h3>
+  <b>Clinelph – Patient Card</b>
+  <span style="margin-left:20px;">Protocol: CLP-001</span>
+  <button style="float:right;" onclick="logout()">Logout</button>
 </header>
 
-<div class="container card">
-  <label>Select Role</label>
-  <select id="role">
-    <option>DataEntry</option>
-    <option>CRC</option>
-    <option>QC</option>
-    <option>QA</option>
+<div class="container">
+
+<!-- PATIENT SUMMARY -->
+<div class="card">
+  <h3>Patient Summary</h3>
+  <p><b>Patient ID:</b> <span id="pid"></span></p>
+  <p><b>Status:</b> <span id="pstatus"></span></p>
+  <p><b>Current Visit:</b> <span id="currentVisit"></span></p>
+</div>
+
+<!-- VISIT NAV -->
+<div class="card">
+  <h3>Visits</h3>
+  <button onclick="openVisit(1)">V1 Screening</button>
+  <button onclick="openVisit(2)">V2 Baseline</button>
+  <button onclick="openVisit(3)">V3 Test Treatment 1</button>
+  <button onclick="openVisit(4)">V4 Baseline (Crossover)</button>
+  <button onclick="openVisit(5)">V5 Test Treatment 2</button>
+</div>
+
+<div id="alertBox"></div>
+<div id="visitPanel" class="card"></div>
+
+<!-- AE -->
+<div class="card">
+  <h3>Adverse Event</h3>
+  <textarea id="aeDesc"></textarea>
+  <select id="aeSeverity">
+    <option>Mild</option>
+    <option>Moderate</option>
+    <option>Severe</option>
   </select>
-  <button onclick="login()">Login</button>
+  <button onclick="reportAE_UI()">Report AE</button>
+</div>
+
+<!-- WITHDRAW -->
+<div class="card">
+  <h3>Withdrawal</h3>
+  <textarea id="withdrawReason"></textarea>
+  <button class="danger" onclick="withdraw_UI()">Withdraw Patient</button>
+</div>
+
 </div>
 
 <script src="js/auth.js"></script>
+<script src="js/db.js"></script>
+<script src="js/crf.js"></script>
+
 <script>
-function login() {
-  loginUser(role.value);
-  location.href = "dashboard.html";
+requireAuth();
+const patientId = sessionStorage.getItem("pid");
+pid.innerText = patientId;
+
+openDB().then(loadPatient);
+
+async function loadPatient() {
+  const patients = await getAllRecords("patients");
+  const p = patients.find(x => x.patientId === patientId);
+  pstatus.innerText = p.status;
+  currentVisit.innerText = p.currentVisit;
 }
+
+/* VISIT ROUTER */
+function openVisit(v) {
+  clearAlert();
+  if (v === 1) loadVisit1();
+  if (v === 2) loadVisit2();
+  if (v === 3) loadVisit3();
+  if (v === 4) loadVisit4();
+  if (v === 5) loadVisit5();
+}
+
+/* VISIT 3 – TEST TREATMENT 1 */
+function loadVisit3() {
+  visitPanel.innerHTML = `
+    <h3>Visit 3 – Test Treatment 1</h3>
+
+    <label>Pregnancy Test (Female)</label>
+    <select id="pregV3"><option>Negative</option><option>Positive</option></select>
+
+    <label>Visit Date</label>
+    <input type="date" id="v3date">
+
+    <button onclick="saveV3()">Save Visit 3</button>
+  `;
+}
+
+async function saveV3() {
+  const visits = await getAllRecords("visits");
+  const v3 = visits.find(v => v.visitNo === 3 && v.patientId === patientId);
+
+  if (pregV3.value === "Positive") {
+    showAlert("Positive pregnancy test – visit failed", false);
+    return;
+  }
+
+  v3.data = {
+    pregnancy: pregV3.value,
+    product: Math.random() > 0.5 ? "A19" : "K87"
+  };
+
+  v3.status = "Completed";
+  v3.visitDate = v3date.value;
+  await updateRecord("visits", v3);
+
+  showAlert("Visit 3 completed", true);
+  loadPatient();
+}
+
+/* VISIT 4 – BASELINE (CROSSOVER) */
+function loadVisit4() {
+  visitPanel.innerHTML = `
+    <h3>Visit 4 – Baseline (Crossover)</h3>
+
+    <label>Check-in Date</label>
+    <input type="date" id="v4in">
+
+    <label>Vitals</label>
+    <input id="v4vitals">
+
+    <label>Brushing Time</label>
+    <input type="datetime-local" id="v4brush">
+
+    <label>Sample Time</label>
+    <input type="datetime-local" id="v4sample">
+
+    <label>Check-out Date</label>
+    <input type="date" id="v4out">
+
+    <button onclick="saveV4()">Save Visit 4</button>
+  `;
+}
+
+async function saveV4() {
+  const visits = await getAllRecords("visits");
+  const v4 = visits.find(v => v.visitNo === 4 && v.patientId === patientId);
+
+  v4.data = {
+    vitals: v4vitals.value,
+    brushing: v4brush.value,
+    sample: v4sample.value
+  };
+
+  v4.status = "Completed";
+  v4.visitDate = v4in.value;
+  await updateRecord("visits", v4);
+
+  showAlert("Visit 4 completed (Washout)", true);
+  loadPatient();
+}
+
+/* VISIT 5 – TEST TREATMENT 2 (CROSSOVER) */
+function loadVisit5() {
+  visitPanel.innerHTML = `
+    <h3>Visit 5 – Test Treatment 2</h3>
+
+    <label>Pregnancy Test (Female)</label>
+    <select id="pregV5"><option>Negative</option><option>Positive</option></select>
+
+    <label>Visit Date</label>
+    <input type="date" id="v5date">
+
+    <button onclick="saveV5()">Save Visit 5</button>
+  `;
+}
+
+async function saveV5() {
+  const visits = await getAllRecords("visits");
+  const v3 = visits.find(v => v.visitNo === 3 && v.patientId === patientId);
+  const v5 = visits.find(v => v.visitNo === 5 && v.patientId === patientId);
+
+  if (pregV5.value === "Positive") {
+    showAlert("Positive pregnancy test – visit failed", false);
+    return;
+  }
+
+  v5.data = {
+    pregnancy: pregV5.value,
+    product: v3.data.product === "A19" ? "K87" : "A19"
+  };
+
+  v5.status = "Completed";
+  v5.visitDate = v5date.value;
+  await updateRecord("visits", v5);
+
+  showAlert("Visit 5 completed (Crossover applied)", true);
+  loadPatient();
+}
+
+/* AE & WITHDRAW */
+async function reportAE_UI() {
+  await reportAE(patientId, {
+    description: aeDesc.value,
+    severity: aeSeverity.value
+  });
+  showAlert("AE recorded", true);
+}
+
+async function withdraw_UI() {
+  if (!withdrawReason.value) {
+    showAlert("Reason required", false);
+    return;
+  }
+  await withdrawPatient(patientId, withdrawReason.value);
+  showAlert("Patient withdrawn", false);
+  loadPatient();
+}
+
+/* HELPERS */
+function showAlert(msg, ok) {
+  alertBox.innerHTML = `<div class="${ok ? "ok" : "fail"}">${msg}</div>`;
+}
+function clearAlert() { alertBox.innerHTML = ""; }
 </script>
 
 </body>

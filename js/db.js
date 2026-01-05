@@ -4,36 +4,30 @@ let db;
 
 function openDatabase() {
   return new Promise(resolve => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = e => {
+    const r = indexedDB.open(DB_NAME, DB_VERSION);
+    r.onupgradeneeded = e => {
       db = e.target.result;
-      ["patients","visits","auditLogs"].forEach(store => {
-        if (!db.objectStoreNames.contains(store)) {
-          db.createObjectStore(store, { keyPath: "id" });
-        }
+      ["patients","visits","auditLogs","comments"].forEach(s => {
+        if (!db.objectStoreNames.contains(s))
+          db.createObjectStore(s, { keyPath: "id" });
       });
     };
-
-    req.onsuccess = e => {
-      db = e.target.result;
-      resolve();
-    };
+    r.onsuccess = e => { db = e.target.result; resolve(); };
   });
 }
 
 function addRecord(store, data) {
   data.id = crypto.randomUUID();
-  db.transaction(store, "readwrite").objectStore(store).add(data);
+  db.transaction(store,"readwrite").objectStore(store).add(data);
 }
 
 function updateRecord(store, data) {
-  db.transaction(store, "readwrite").objectStore(store).put(data);
+  db.transaction(store,"readwrite").objectStore(store).put(data);
 }
 
 function getAllRecords(store) {
-  return new Promise(resolve => {
+  return new Promise(r => {
     const req = db.transaction(store).objectStore(store).getAll();
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => r(req.result);
   });
 }

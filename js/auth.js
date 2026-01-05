@@ -1,18 +1,28 @@
-function loginUser(role) {
-  sessionStorage.setItem("user", JSON.stringify({ role }));
-}
+function login() {
+  const email = document.getElementById("email").value;
+  const role = document.getElementById("role").value;
 
-function getUser() {
-  return JSON.parse(sessionStorage.getItem("user"));
+  if (!email.endsWith("@company.com")) {
+    document.getElementById("msg").innerText =
+      "Only official email IDs allowed";
+    return;
+  }
+
+  sessionStorage.setItem("user", JSON.stringify({ email, role }));
+  window.location.href = "dashboard.html";
 }
 
 function requireAuth() {
-  const u = getUser();
-  if (!u) location.href = "index.html";
-  return u;
+  const u = sessionStorage.getItem("user");
+  if (!u) window.location.href = "index.html";
+  return JSON.parse(u);
+}
+
+function getRole() {
+  return JSON.parse(sessionStorage.getItem("user")).role;
 }
 
 function logout() {
   sessionStorage.clear();
-  location.href = "index.html";
+  window.location.href = "index.html";
 }

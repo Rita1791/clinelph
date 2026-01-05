@@ -6,7 +6,6 @@
   <meta name="theme-color" content="#0b5ed7">
   <link rel="stylesheet" href="css/main.css">
 </head>
-
 <body>
 
 <header class="app-header">
@@ -14,7 +13,7 @@
   <h2>Clinelph</h2>
 </header>
 
-<div class="container">
+<div class="container card">
   <h3>Login</h3>
 
   <label>Email</label>
@@ -37,15 +36,8 @@
 <script src="js/auth.js"></script>
 <script>
 function login() {
-  const email = document.getElementById("email").value;
-  const role = document.getElementById("role").value;
-
-  if (!email) {
-    alert("Email required");
-    return;
-  }
-
-  loginUser(email, role);
+  if (!email.value) return alert("Email required");
+  loginUser(email.value, role.value);
   sessionStorage.setItem("studyProtocol", "CLP-001");
   window.location.href = "dashboard.html";
 }
@@ -53,4 +45,3 @@ function login() {
 
 </body>
 </html>
-

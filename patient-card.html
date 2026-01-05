@@ -2,136 +2,67 @@
 <html>
 <head>
   <title>Patient Card</title>
-  <style>
-    .ok { color: green; }
-    .error { color: red; }
-  </style>
+  <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-  <div class="container">
+<div class="container">
+<div class="card"><h3 id="pid"></h3></div>
 
-  <div class="card">
-    <h3>Patient Card</h3>
-    <p><strong>Patient ID:</strong> <span id="pid"></span></p>
-  </div>
-
-  <div class="card">
-    <h4>Product Randomization</h4>
-    <button onclick="randomize()">Randomize Product</button>
-    <p><strong>Assigned Product:</strong> <span id="product"></span></p>
-  </div>
-
-  <div class="card">
-    <h4>Edit / Action</h4>
-
-    <label>Reason for Change</label>
-    <textarea id="reason"></textarea>
-
-    <button onclick="save()">Save Changes</button>
-    <button class="danger" onclick="remove()">Delete Patient</button>
-  </div>
-
+<div class="card">
+<button onclick="randomize()">Randomize</button>
+<p id="product"></p>
 </div>
 
-<h3 id="pid"></h3>
-
-<label>Randomize Product</label>
-<button onclick="randomize()">Randomize</button>
-<span id="product"></span>
-
-<label>Reason for Edit</label>
-<textarea id="reason"></textarea>
-
+<div class="card">
+<textarea id="reason" placeholder="Reason for edit"></textarea>
 <button onclick="save()">Save</button>
-<button onclick="remove()">Delete</button>
+<button class="danger" onclick="remove()">Delete</button>
+</div>
+
+<div class="card">
+<h4>QC / QA Comments</h4>
+<textarea id="comment"></textarea>
+<button onclick="addComment()">Add Comment</button>
+<ul id="comments"></ul>
+</div>
+</div>
 
 <script src="js/db.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/randomization.js"></script>
 <script>
-const user = requireAuth();
-const pid = sessionStorage.getItem("selectedPatientId");
+requireAuth(); openDatabase().then(load);
+const pid=sessionStorage.getItem("pid");
 
-openDatabase().then(() => {
-  document.getElementById("pid").innerText = pid;
-});
+function load(){ document.getElementById("pid").innerText=pid; loadComments(); }
 
-let assignedProduct = null;
+let prod=null;
+function randomize(){ prod=randomizeProduct(); product.innerText=prod; }
 
-function randomize() {
-  assignedProduct = randomizeProduct();
-  product.innerText = assignedProduct;
+function save(){
+  if(!canEdit()||!reason.value) return alert("No permission or reason missing");
+  addRecord("auditLogs",{action:"EDIT",patientId:pid,user:getCurrentUser().email,reason:reason.value,time:new Date().toISOString()});
 }
 
-function save() {
-  if (!canEdit()) {
-    alert("No permission");
-    return;
-  }
-  if (!reason.value) {
-    alert("Reason required");
-    return;
-  }
-
-  addRecord("auditLogs", {
-    action: "EDIT",
-    patientId: pid,
-    user: user.email,
-    reason: reason.value,
-    time: new Date().toISOString()
-  });
-
-  alert("Saved");
+function remove(){
+  if(!canDelete()||!reason.value) return alert("No permission or reason missing");
+  addRecord("auditLogs",{action:"DELETE",patientId:pid,user:getCurrentUser().email,reason:reason.value,time:new Date().toISOString()});
 }
 
-function remove() {
-  if (!canDelete()) {
-    alert("No delete permission");
-    return;
-  }
-  if (!reason.value) {
-    alert("Reason required");
-    return;
-  }
+async function loadComments(){
+  comments.innerHTML="";
+  (await getAllRecords("comments")).filter(c=>c.patientId===pid)
+  .forEach(c=>comments.innerHTML+=`<li>${c.user}: ${c.text}</li>`);
+}
 
-  addRecord("auditLogs", {
-    action: "DELETE",
-    patientId: pid,
-    user: user.email,
-    reason: reason.value
-  });
-
-  alert("Patient deleted (soft)");
+function addComment(){
+  const r=getCurrentUser().role;
+  if(!["QC","QA","PI"].includes(r)) return alert("No permission");
+  addRecord("comments",{patientId:pid,user:getCurrentUser().email,role:r,text:comment.value,time:new Date().toISOString()});
+  comment.value=""; loadComments();
 }
 </script>
 
 </body>
-  <div class="container">
-
-  <div class="card">
-    <h3>Patient Card</h3>
-    <p><strong>Patient ID:</strong> <span id="pid"></span></p>
-  </div>
-
-  <div class="card">
-    <h4>Product Randomization</h4>
-    <button onclick="randomize()">Randomize Product</button>
-    <p><strong>Assigned Product:</strong> <span id="product"></span></p>
-  </div>
-
-  <div class="card">
-    <h4>Edit / Action</h4>
-
-    <label>Reason for Change</label>
-    <textarea id="reason"></textarea>
-
-    <button onclick="save()">Save Changes</button>
-    <button class="danger" onclick="remove()">Delete Patient</button>
-  </div>
-
-</div>
-
 </html>
-
-

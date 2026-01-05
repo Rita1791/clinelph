@@ -1,9 +1,5 @@
 function loginUser(email, role) {
-  sessionStorage.setItem("user", JSON.stringify({
-    email,
-    role,
-    time: new Date().toISOString()
-  }));
+  sessionStorage.setItem("user", JSON.stringify({ email, role }));
 }
 
 function getCurrentUser() {
@@ -11,25 +7,20 @@ function getCurrentUser() {
 }
 
 function requireAuth() {
-  const user = getCurrentUser();
-  if (!user) {
-    alert("Session expired");
-    window.location.href = "index.html";
-  }
-  return user;
+  const u = getCurrentUser();
+  if (!u) location.href = "index.html";
+  return u;
 }
 
 function canEdit() {
-  const role = getCurrentUser().role;
-  return ["DataEntry","CRC","Phlebotomist","OA"].includes(role);
+  return ["DataEntry","CRC","Phlebotomist","OA"].includes(getCurrentUser().role);
 }
 
 function canDelete() {
-  const role = getCurrentUser().role;
-  return ["QC","QA","PI"].includes(role);
+  return ["QC","QA","PI"].includes(getCurrentUser().role);
 }
 
 function logoutUser() {
   sessionStorage.clear();
-  window.location.href = "index.html";
+  location.href = "index.html";
 }

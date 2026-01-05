@@ -1,31 +1,55 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Patient Card</title>
+  <title>Clinelph | Patient Card</title>
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
-<header>
-  <img src="assets/logo.png">
+<header class="app-header">
+  <div>
+    <b>Clinelph – Patient Card</b><br>
+    Protocol: CLP-001 | Role: <span id="role"></span>
+  </div>
   <button onclick="logout()">Logout</button>
 </header>
 
 <div class="container">
 
 <div class="card">
-  <h3>Patient: <span id="pid"></span></h3>
+  <h3>Patient Summary</h3>
+  <p><b>ID:</b> <span id="pid"></span></p>
+  <p><b>Status:</b> <span id="pstatus"></span></p>
 </div>
 
 <div class="card">
-  <button onclick="loadVisit(1)">Visit 1</button>
-  <button onclick="loadVisit(2)">Visit 2</button>
-  <button onclick="loadVisit(3)">Visit 3</button>
-  <button onclick="loadVisit(4)">Visit 4</button>
-  <button onclick="loadVisit(5)">Visit 5</button>
+  <h3>Visits</h3>
+  <button onclick="openVisit(1)">Visit 1 – Screening</button>
+  <button onclick="openVisit(2)">Visit 2 – Baseline</button>
+  <button onclick="openVisit(3)">Visit 3 – Test Treatment 1</button>
+  <button onclick="openVisit(4)">Visit 4 – Baseline</button>
+  <button onclick="openVisit(5)">Visit 5 – Test Treatment 2</button>
 </div>
 
-<div class="card" id="visit"></div>
+<div id="alert"></div>
+<div id="visitPanel" class="card"></div>
+
+<div class="card">
+  <h3>Adverse Event</h3>
+  <textarea id="aeDesc" placeholder="Describe event"></textarea>
+  <select id="aeSeverity">
+    <option>Mild</option>
+    <option>Moderate</option>
+    <option>Severe</option>
+  </select>
+  <button onclick="saveAE()">Report AE</button>
+</div>
+
+<div class="card">
+  <h3>Withdrawal</h3>
+  <textarea id="wdReason" placeholder="Reason for withdrawal"></textarea>
+  <button class="danger" onclick="withdraw()">Withdraw Patient</button>
+</div>
 
 </div>
 
@@ -35,28 +59,145 @@
 
 <script>
 requireAuth();
+document.getElementById("role").innerText = getUser().role;
 
-const pid = sessionStorage.getItem("pid");
-document.getElementById("pid").innerText = pid;
+const patientId = sessionStorage.getItem("pid");
+document.getElementById("pid").innerText = patientId;
 
-openDB();
+openDB().then(loadPatient);
 
-async function loadVisit(no) {
-  const v = await getVisit(pid, no);
-  visit.innerHTML = `
-    <h4>${v.visitName}</h4>
-    <textarea id="notes">${v.data.notes || ""}</textarea>
-    <button onclick="save(${no})">Save</button>
-    <p>Status: ${v.status}</p>
+async function loadPatient() {
+  const patients = await getAllRecords("patients");
+  const p = patients.find(x => x.patientId === patientId);
+  document.getElementById("pstatus").innerText = p.status;
+}
+
+/* ================= VISITS ================= */
+async function openVisit(no) {
+  const check = await canStartVisit(patientId, no);
+  if (!check.ok) {
+    alertBox(check.msg);
+    return;
+  }
+
+  if (no === 1) loadScreening();
+  else loadTreatment(no);
+}
+
+/* ---- Screening ---- */
+function loadScreening() {
+  visitPanel.innerHTML = `
+    <h3>Visit 1 – Screening</h3>
+
+    <label>Age</label><input id="age">
+    <label>Gender</label>
+    <select id="gender"><option>Male</option><option>Female</option></select>
+
+    <label>Inclusion Criteria</label>
+    <select id="incl"><option value="true">Pass</option><option value="false">Fail</option></select>
+
+    <label>Exclusion Criteria</label>
+    <select id="excl"><option value="true">Pass</option><option value="false">Fail</option></select>
+
+    <label>Pregnancy Test</label>
+    <select id="preg"><option>Negative</option><option>Positive</option></select>
+
+    <label>Ninhydrin OD</label><input id="nin" type="number" step="0.01">
+
+    <button onclick="saveScreening()">Save Screening</button>
   `;
 }
 
-async function save(no) {
-  const v = await getVisit(pid, no);
-  v.data.notes = notes.value;
-  v.status = "Completed";
-  update("visits", v);
-  alert("Saved");
+async function saveScreening() {
+  const data = {
+    age: +age.value,
+    gender: gender.value,
+    inclusion: incl.value === "true",
+    exclusion: excl.value === "true",
+    pregnancy: preg.value,
+    ninhydrin: +nin.value
+  };
+
+  const result = evaluateScreening(data);
+
+  const visit = await getVisit(patientId, 1);
+  visit.data = data;
+  visit.visitDate = new Date().toISOString().split("T")[0];
+
+  if (result !== "Eligible") {
+    visit.status = "Failed";
+    await updateRecord("visits", visit);
+    alertBox("Screen Failure: " + result);
+    return;
+  }
+
+  visit.status = "Completed";
+  await updateRecord("visits", visit);
+  alertBox("Screening passed");
+}
+
+/* ---- Treatment Visits ---- */
+async function loadTreatment(no) {
+  visitPanel.innerHTML = `
+    <h3>${VISIT_PROTOCOL[no].name}</h3>
+    <label>Check-in Date</label><input id="cin" type="date">
+    <label>Brushing Time</label><input id="brush" type="datetime-local">
+    <label>Sample Time</label><input id="sample" type="datetime-local">
+    <label>Product Code</label><input id="prod" readonly>
+    <button onclick="rand()">Randomize</button>
+    <label>Check-out</label><input id="cout" type="datetime-local">
+    <button onclick="saveTreatment(${no})">Save Visit</button>
+  `;
+}
+
+async function rand() {
+  const visits = await getVisitsForPatient(patientId);
+  const prev = visits.find(v => v.visitNo < 3 && v.data.product);
+  prod.value = randomizeProduct(prev?.data?.product);
+}
+
+async function saveTreatment(no) {
+  const visit = await getVisit(patientId, no);
+  visit.data = {
+    checkin: cin.value,
+    brushing: brush.value,
+    sample: sample.value,
+    product: prod.value,
+    checkout: cout.value
+  };
+  visit.status = "Completed";
+  visit.visitDate = cin.value;
+  await updateRecord("visits", visit);
+  alertBox("Visit saved");
+}
+
+/* ================= AE ================= */
+async function saveAE() {
+  await addRecord("adverseEvents", {
+    patientId,
+    desc: aeDesc.value,
+    severity: aeSeverity.value,
+    time: new Date().toISOString()
+  });
+  alertBox("Adverse Event recorded");
+}
+
+/* ================= WITHDRAW ================= */
+async function withdraw() {
+  if (!wdReason.value) {
+    alertBox("Reason required");
+    return;
+  }
+  const patients = await getAllRecords("patients");
+  const p = patients.find(x => x.patientId === patientId);
+  p.status = "Withdrawn";
+  await updateRecord("patients", p);
+  alertBox("Patient withdrawn");
+}
+
+function alertBox(msg) {
+  document.getElementById("alert").innerHTML =
+    `<div class="alert error">${msg}</div>`;
 }
 </script>
 

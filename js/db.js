@@ -1,18 +1,24 @@
 const DB_NAME = "clinelphDB";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let db;
 
 function openDatabase() {
   return new Promise(resolve => {
-    const r = indexedDB.open(DB_NAME, DB_VERSION);
-    r.onupgradeneeded = e => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+
+    req.onupgradeneeded = e => {
       db = e.target.result;
       ["patients","visits","auditLogs","comments"].forEach(s => {
-        if (!db.objectStoreNames.contains(s))
+        if (!db.objectStoreNames.contains(s)) {
           db.createObjectStore(s, { keyPath: "id" });
+        }
       });
     };
-    r.onsuccess = e => { db = e.target.result; resolve(); };
+
+    req.onsuccess = e => {
+      db = e.target.result;
+      resolve();
+    };
   });
 }
 

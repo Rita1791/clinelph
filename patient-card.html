@@ -1,3 +1,12 @@
+requireAuth();
+
+const patientId = sessionStorage.getItem("pid");
+
+if (!patientId) {
+  alert("No patient selected. Redirecting to Patient List.");
+  window.location.href = "patient.html";
+}
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -304,3 +313,4 @@ function clearAlert() {
 
 </body>
 </html>
+

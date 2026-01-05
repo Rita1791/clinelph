@@ -1,26 +1,60 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Audit</title>
-  <link rel="stylesheet" href="css/main.css">
-</head>
-<body>
+* { box-sizing: border-box; font-family: Arial, sans-serif; }
 
-<div class="container card">
-<h3>Audit Logs</h3>
-<table><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Reason</th></tr></thead>
-<tbody id="a"></tbody></table>
-</div>
+body {
+  margin: 0;
+  background: #f5f7fa;
+}
 
-<script src="js/db.js"></script>
-<script src="js/auth.js"></script>
-<script>
-requireAuth(); openDatabase().then(async()=>{
-  (await getAllRecords("auditLogs")).forEach(l=>{
-    a.innerHTML+=`<tr><td>${l.time}</td><td>${l.user}</td><td>${l.action}</td><td>${l.reason}</td></tr>`;
-  });
-});
-</script>
+header {
+  background: #0b5ed7;
+  color: white;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
 
-</body>
-</html>
+header img { height: 36px; }
+
+.container { padding: 24px; }
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #ddd;
+}
+
+button {
+  padding: 8px 14px;
+  border: none;
+  background: #0b5ed7;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button.secondary { background: #6c757d; }
+
+button.danger { background: #dc3545; }
+
+input, select, textarea {
+  width: 100%;
+  padding: 7px;
+  margin-bottom: 12px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.ok { color: green; font-weight: bold; }
+.fail { color: red; font-weight: bold; }
+.pending { color: orange; font-weight: bold; }
